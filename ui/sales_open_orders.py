@@ -43,9 +43,13 @@ class MFGReportWindow(QWidget):
 
         current_year_h1 = QLabel("Current Year")
         layout.addWidget(current_year_h1)
-
         self.table = self.build_table()
         layout.addWidget(self.table)
+
+        #previous_year_h1 = QLabel("Previous Year")
+        #layout.addWidget(previous_year_h1)
+        #self.table = self.build_table()
+        #layout.addWidget(self.table)
 
         self.setLayout(layout)
 

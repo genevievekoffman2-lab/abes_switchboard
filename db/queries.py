@@ -38,6 +38,22 @@ def get_open_orders_mfg(con, from_date: date, to_date: date, after_ship_date: bo
     cursor.close()
     return rows
 
+# used to calculate the open orders from the year past
+# gets open orders between creation date of JOB and its closed date (ie the invoice date)
+def get_open_orders_atm(con, date:date):
+    query = """
+        SELECT j.JOBNO, j.CRETDATE
+        FROM JOBS j
+        LEFT JOIN INVOICE inv ON j.JOBNO = inv.JOBNO 
+        WHERE CAST(j.CRETDATE AS DATE) <= ?
+        AND (CAST(inv.INVDATE AS DATE) > ? OR inv.JOBNO IS NULL)
+    """
+    cursor = con.cursor()
+    cursor.execute(query, [date, date])
+    rows = cursor.fetchall()
+    cursor.close()
+    return rows
+
 
 # used for MFG Open Orders Module
 # gets a list such that
