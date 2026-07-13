@@ -12,7 +12,8 @@ def get_all_cust(con):
 
 # grabs all open orders in the time range
 # if after_ship_date is true; its the future open orders
-def get_open_orders_mfg(con, from_date: date, to_date: date, after_ship_date: bool):
+# uses the state of a job so it will only work on a current date; use another func for past open orders
+def get_open_orders(con, from_date: date, to_date: date, after_ship_date: bool):
     if after_ship_date:
         date_filter = "AND CAST(j.NEEDDATE AS DATE) > ?"
         params = [to_date]
@@ -59,7 +60,7 @@ def get_open_orders_atm(con, date:date):
 # gets a list such that
 #       INVDATE is between from and to dates
 # list returned is the total sales per ADFIELD2 (category)
-def get_total_sales_mfg(con, from_date: date, to_date: date):
+def get_total_sales(con, from_date: date, to_date: date):
     query = """
         SELECT 
             item.ADFIELD2,

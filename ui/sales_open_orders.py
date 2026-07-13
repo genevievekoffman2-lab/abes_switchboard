@@ -3,7 +3,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QHeaderView, QTableWidgetItem, \
     QSizePolicy, QApplication
 
-from db.queries import get_total_sales_mfg, get_open_orders_mfg, get_sales_adjustments
+from db.queries import get_total_sales, get_open_orders, get_sales_adjustments
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -43,13 +43,13 @@ class MFGReportWindow(QWidget):
 
         current_year_h1 = QLabel("Current Year")
         layout.addWidget(current_year_h1)
-        self.table = self.build_table()
-        layout.addWidget(self.table)
+        self.table_current = self.build_table()
+        layout.addWidget(self.table_current)
 
-        #previous_year_h1 = QLabel("Previous Year")
-        #layout.addWidget(previous_year_h1)
-        #self.table = self.build_table()
-        #layout.addWidget(self.table)
+        previous_year_h1 = QLabel("Previous Year")
+        layout.addWidget(previous_year_h1)
+        self.table_last_year = self.build_table()
+        layout.addWidget(self.table_last_year)
 
         self.setLayout(layout)
 
@@ -67,7 +67,8 @@ class MFGReportWindow(QWidget):
         # table
         table = QTableWidget()
         # UI resizing proportionally
-        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        table.verticalHeader().setDefaultSectionSize(35)
         table.setFont(self.font())
         table.setColumnCount(5)
         table.setRowCount(len(SUBMARKETS))
@@ -86,20 +87,11 @@ class MFGReportWindow(QWidget):
     # logic when load button is pressed
     def load_orders(self):
         from_date, to_date = self.date_selector.get_dates()
-        print("loading orders")
 
         #TODO make sure the dates are selected
 
         # structure to fill before writing into table
-        market_data = {
-            "Cheesecake TD": [0, 0, 0, 0],
-            "Vegan WNR": [0, 0, 0, 0],
-            "Vegan TD": [0, 0, 0, 0],
-            "Total Vegan": [0, 0, 0, 0],
-            "Total Manufactured": [0, 0, 0, 0],
-            "Distributed": [0, 0, 0, 0],
-            "Grand Total": [0, 0, 0, 0]
-        }
+        market_data = self.get_empty_data()
 
         # lookup dictionary (we get cat back from DB)
         cat_to_market = {
@@ -110,19 +102,19 @@ class MFGReportWindow(QWidget):
         }
 
         # fetch data from Firebird
-        fetched_sales = get_total_sales_mfg(self.con, from_date, to_date)
+        fetched_sales = get_total_sales(self.con, from_date, to_date)
         for cat, sales in fetched_sales:
             market_name = cat_to_market.get(cat)
             if market_name:
                 market_data[market_name][0] = sales
 
-        fetched_open_orders = get_open_orders_mfg(self.con, from_date, to_date, False)
+        fetched_open_orders = get_open_orders(self.con, from_date, to_date, False)
         for cat, open_orders in fetched_open_orders:
             market_name = cat_to_market.get(cat)
             if market_name:
                 market_data[market_name][1] = open_orders
 
-        fetched_future_open_orders = get_open_orders_mfg(self.con, from_date, to_date, True)
+        fetched_future_open_orders = get_open_orders(self.con, from_date, to_date, True)
         for cat, future_open_orders in fetched_future_open_orders:
             market_name = cat_to_market.get(cat)
             if market_name:
@@ -134,7 +126,32 @@ class MFGReportWindow(QWidget):
 
         # after filled, fill the totals
         self.calculate_totals(market_data)
-        self.fill_table(market_data)
+        self.fill_table(self.table_current, market_data)
+
+        market_data_last_year = self.get_empty_data()
+        # do the same for market_data_last_year
+        from_date2 = from_date.replace(year=from_date.year-1)
+        to_date2 = to_date.replace(year=to_date.year-1)
+        fetched_sales = get_total_sales(self.con, from_date2, to_date2)
+        for cat, sales in fetched_sales:
+            market_name = cat_to_market.get(cat)
+            if market_name:
+                market_data_last_year[market_name][0] = sales
+
+        self.calculate_totals(market_data_last_year)
+        self.fill_table(self.table_last_year, market_data_last_year)
+
+
+    def get_empty_data(self):
+        return {
+            "Cheesecake TD": [0, 0, 0, 0],
+            "Vegan WNR": [0, 0, 0, 0],
+            "Vegan TD": [0, 0, 0, 0],
+            "Total Vegan": [0, 0, 0, 0],
+            "Total Manufactured": [0, 0, 0, 0],
+            "Distributed": [0, 0, 0, 0],
+            "Grand Total": [0, 0, 0, 0]
+        }
 
     # fills in the total vegan, total manufactured, & grand total
     def calculate_totals(self, market_data):
@@ -157,17 +174,17 @@ class MFGReportWindow(QWidget):
         return market_data
 
     # fills the cells in the UI table using market_data
-    def fill_table(self, market_data):
-        for row_index, (market, values) in enumerate(market_data.items()):
+    def fill_table(self, table, data):
+        for row_index, (market, values) in enumerate(data.items()):
             for col_index, value in enumerate(values, start=1):
                 item = QTableWidgetItem(f"${value:,.2f}")
                 # self.set_cell(f"${value:,.2f}", row_index, col_index)
 
                 # adds UI highlighting for grand total row TODO: fix this; row is not being highlighted
-                if row_index == self.table.rowCount() - 1:
+                if row_index == table.rowCount() - 1:
                     item.setBackground(QColor("#dbeafe"))
                     item.setForeground(QColor("#1d4ed8"))
-                self.table.setItem(row_index, col_index, item)
+                table.setItem(row_index, col_index, item)
 
     # accounting adjustments will update the Total Sales column for Vegan WNR
     def update_with_adjustments(self, market_data, adjustments):
