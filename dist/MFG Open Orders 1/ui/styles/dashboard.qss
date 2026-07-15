@@ -1,0 +1,35 @@
+QLabel#dashboard_title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #212529;
+}
+
+QLabel#dashboard_subtitle {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+QPushButton#dashboard_card {
+    background-color: white;
+    border: 1px solid gray;
+    border-radius: 12px;
+    text-align: left;
+}
+
+QPushButton#dashboard_card:hover {
+    background-color: #f8f9fa;
+    border: 1px solid #adb5bd;
+}
+
+QLabel#card_title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+}
+
+QLabel#card_subtitle {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+

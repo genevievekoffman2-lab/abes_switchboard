@@ -1,6 +1,7 @@
 # file contains all SQL queries to the Firebird database
 
-from datetime import date
+from datetime import date, timedelta
+
 
 # gets a list of all the customers
 def get_all_cust(con):
@@ -126,3 +127,28 @@ def get_invoices(con, customer_names: list, from_date: date, to_date: date):
     cursor.close()
     return rows
 
+# grabs all open orders from a year ago using the invoice creation date and
+# the job creation date as params; also includes jobs within 90 days; see docs
+# for more details
+def get_open_orders_last_year(con, from_date: date, to_date: date):
+    from_date_90 = from_date - timedelta(days=90)
+    query = f"""
+        SELECT 
+            item.ADFIELD2, 
+            SUM(det.EXTPRICE)
+        FROM JOBS j
+        LEFT JOIN INVOICE inv ON j.JOBNO = inv.JOBNO 
+        JOIN JOBDETL det ON j.JOBNO = det.JOBNO 
+        JOIN ITEM item ON det.REFID = item.ITEMCODE 
+        WHERE j.JOBNO LIKE 'SO%'
+        AND CAST(j.CRETDATE AS DATE) BETWEEN '{from_date_90}' AND '{to_date}'
+        AND ( CAST(inv.INVDATE AS DATE) > '{to_date}' OR inv.JOBNO IS NULL )
+        AND item.ADFIELD2 IN ('1', '2', '3', '7')
+        GROUP BY item.ADFIELD2 
+        ORDER BY item.ADFIELD2
+    """
+    cursor = con.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    return rows
