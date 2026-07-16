@@ -10,7 +10,7 @@ class DateRangeSelector(QWidget):
 
         self.from_date = QDateEdit()
         self.from_date.setCalendarPopup(True)
-        self.from_date.setDate(QDate(2026, 1, 1))
+        self.from_date.setDate(QDate(2026, 7, 1))
 
         self.to_date = QDateEdit()
         self.to_date.setCalendarPopup(True)

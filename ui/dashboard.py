@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 
 from db.queries import get_all_cust
+from ui.modules.comparative_report_module import ComparativeReportWindow
 from ui.sales_open_orders import MFGReportWindow
 from ui.sales_report_module import SalesReportWindow
 
@@ -18,8 +19,9 @@ class Dashboard(QWidget):
         self.sales_window = None
         self.con = con
         self.setWindowTitle("Switchboard")
-        self.setMinimumWidth(500)
-        self.setMinimumHeight(500)
+        # window size is 3/4 screen size
+        screen = QApplication.primaryScreen().geometry()
+        self.resize(int(screen.width() * 0.75), int(screen.height() * 0.75))
         self._build_ui()
 
     def _build_ui(self):
@@ -42,7 +44,8 @@ class Dashboard(QWidget):
 
         grid.addWidget(self._make_card("Sales Report", "Rankings by customer & date", "#dbeafe", self.open_sales_report), 0, 0)
         grid.addWidget(self._make_card("Open Orders", "Open orders & total sales ", "#dcfce7", self.open_open_orders), 0, 1)
-        grid.addWidget(self._make_card("Module 3", "Coming soon", "#fce7f3", None), 0, 2)
+        grid.addWidget(self._make_card("Comparative Report", "Sales by item for past 3 years", "dbeafe", self.open_comparative_report), 0, 2)
+        grid.addWidget(self._make_card("Module 4", "Coming soon", "#fce7f3", None), 1, 0)
 
         layout.addLayout(grid)
         layout.addStretch()
@@ -85,6 +88,18 @@ class Dashboard(QWidget):
 
     def open_open_orders(self):
         self.sales_window = MFGReportWindow(self.con)
+        self.sales_window.show()
+
+    def open_comparative_report(self):
+        #rows = get_all_cust(self.con)
+        #customer_names = []
+        #for row in rows:
+        #    customer_names.append(row[0])
+
+        #customer_names_sorted = sorted(customer_names)
+        customer_names_sorted = ["whole foods WNR", "Whole foods LES", "Wegmans", "Morton Williams A", "Paris Baguette NJ",
+                                 "Paris Bag 2", "Amazon Fresh", "Amazon House", "Customer B", "AAA", "ZZZ", "ZZZ", "Little Italy"]
+        self.sales_window = ComparativeReportWindow(customer_names_sorted, self.con)
         self.sales_window.show()
 
 def run_dashboard(con):

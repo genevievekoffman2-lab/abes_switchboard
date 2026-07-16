@@ -11,47 +11,51 @@ def get_all_cust(con):
     cursor.close()
     return rows
 
-# grabs all open orders in the time range
-# if after_ship_date is true; its the future open orders
-# uses the state of a job so it will only work on a current date; use another func for past open orders
-def get_open_orders(con, from_date: date, to_date: date, after_ship_date: bool):
-    if after_ship_date:
-        date_filter = "AND CAST(j.NEEDDATE AS DATE) > ?"
-        params = [to_date]
-    else:
-        date_filter = "AND CAST(j.NEEDDATE AS DATE) BETWEEN ? AND ?"
-        params = [from_date, to_date]
-
+# basic operation to grab all open orders uses state
+# only works when the time period is current bc it depends on 'state=ordered'
+#
+def get_open_orders_(con, from_date: date, to_date: date):
+    date_filter = "AND CAST(j.NEEDDATE AS DATE) BETWEEN ? AND ?"
     query = f"""
-        SELECT 
-            item.ADFIELD2, 
-            SUM(det.EXTPRICE)
-        FROM JOBS j 
-        JOIN JOBDETL det ON j.JOBNO = det.JOBNO 
-        JOIN ITEM item ON det.REFID = item.ITEMCODE 
-        WHERE j.JOBSTATS = 'ORDERED'
-            {date_filter}
-        GROUP BY item.ADFIELD2 
-        ORDER BY item.ADFIELD2
-    """
+            SELECT 
+                item.ADFIELD2, 
+                SUM(det.EXTPRICE)
+            FROM JOBS j 
+            JOIN JOBDETL det ON j.JOBNO = det.JOBNO 
+            JOIN ITEM item ON det.REFID = item.ITEMCODE 
+            WHERE j.JOBSTATS = 'ORDERED'
+                {date_filter}
+            GROUP BY item.ADFIELD2 
+            ORDER BY item.ADFIELD2
+        """
     cursor = con.cursor()
-    cursor.execute(query, params)
+    cursor.execute(query, [from_date, to_date])
     rows = cursor.fetchall()
     cursor.close()
     return rows
 
-# used to calculate the open orders from the year past
-# gets open orders between creation date of JOB and its closed date (ie the invoice date)
-def get_open_orders_atm(con, date:date):
+# gets the open orders placed between from-to dates
+# that have a NEEDATE coming up
+def get_open_orders_after_date(con, from_date: date, to_date: date):
+    ninety_days_before_from_date = from_date - timedelta(days=90)
     query = """
-        SELECT j.JOBNO, j.CRETDATE
-        FROM JOBS j
-        LEFT JOIN INVOICE inv ON j.JOBNO = inv.JOBNO 
-        WHERE CAST(j.CRETDATE AS DATE) <= ?
-        AND (CAST(inv.INVDATE AS DATE) > ? OR inv.JOBNO IS NULL)
-    """
+            SELECT 
+                item.ADFIELD2, 
+                SUM(det.EXTPRICE)
+            FROM JOBS j
+            LEFT JOIN INVOICE inv ON j.JOBNO = inv.JOBNO 
+            JOIN JOBDETL det ON j.JOBNO = det.JOBNO 
+            JOIN ITEM item ON det.REFID = item.ITEMCODE 
+            WHERE j.JOBNO LIKE 'SO%'
+            AND CAST(j.CRETDATE AS DATE) BETWEEN ? AND ? 
+            AND CAST(j.NEEDDATE AS DATE) > ?
+            AND inv.JOBNO IS NULL
+            AND item.ADFIELD2 IN ('1', '2', '3', '7')
+            GROUP BY item.ADFIELD2 
+            ORDER BY item.ADFIELD2
+        """
     cursor = con.cursor()
-    cursor.execute(query, [date, date])
+    cursor.execute(query, [ninety_days_before_from_date, to_date, to_date])
     rows = cursor.fetchall()
     cursor.close()
     return rows

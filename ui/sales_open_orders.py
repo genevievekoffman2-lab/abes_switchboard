@@ -3,7 +3,8 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QHeaderView, QTableWidgetItem, \
     QSizePolicy, QApplication
 
-from db.queries import get_total_sales, get_open_orders, get_sales_adjustments, get_open_orders_last_year
+from db.queries import get_total_sales, get_sales_adjustments, get_open_orders_last_year, \
+    get_open_orders_, get_open_orders_after_date
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -17,6 +18,14 @@ class MFGReportWindow(QWidget):
         self.resize(int(screen.width() *0.75),int(screen.height()*0.75))
         self._load_styles()
         self._build_ui()
+
+        # lookup dictionary (we get cat back from DB)
+        self.cat_to_market = {
+            '1' : 'Cheesecake TD',
+            '2' : 'Vegan WNR',
+            '3' : 'Vegan TD',
+            '7' : 'Distributed'
+        }
 
     def _load_styles(self):
         with open("ui/styles/sales_open_orders.qss", "r") as f:
@@ -93,30 +102,25 @@ class MFGReportWindow(QWidget):
         # structure to fill before writing into table
         market_data = self.get_empty_data()
 
-        # lookup dictionary (we get cat back from DB)
-        cat_to_market = {
-            '1' : 'Cheesecake TD',
-            '2' : 'Vegan WNR',
-            '3' : 'Vegan TD',
-            '7' : 'Distributed'
-        }
-
         # fetch data from Firebird
         fetched_sales = get_total_sales(self.con, from_date, to_date)
         for cat, sales in fetched_sales:
-            market_name = cat_to_market.get(cat)
+            market_name = self.cat_to_market.get(cat)
             if market_name:
                 market_data[market_name][0] = sales
 
-        fetched_open_orders = get_open_orders(self.con, from_date, to_date, False)
+        fetched_open_orders = get_open_orders_(self.con, from_date, to_date)
         for cat, open_orders in fetched_open_orders:
-            market_name = cat_to_market.get(cat)
+            market_name = self.cat_to_market.get(cat)
             if market_name:
                 market_data[market_name][1] = open_orders
 
-        fetched_future_open_orders = get_open_orders(self.con, from_date, to_date, True)
+        fetched_future_open_orders = get_open_orders_after_date(self.con, from_date, to_date)
+        for futureorder in fetched_future_open_orders:
+            print(futureorder)
+
         for cat, future_open_orders in fetched_future_open_orders:
-            market_name = cat_to_market.get(cat)
+            market_name = self.cat_to_market.get(cat)
             if market_name:
                 market_data[market_name][3] = future_open_orders
 
@@ -128,25 +132,28 @@ class MFGReportWindow(QWidget):
         self.calculate_totals(market_data)
         self.fill_table(self.table_current, market_data)
 
-        market_data_last_year = self.get_empty_data()
         # do the same for market_data_last_year
         from_date2 = from_date.replace(year=from_date.year-1)
         to_date2 = to_date.replace(year=to_date.year-1)
-        fetched_sales = get_total_sales(self.con, from_date2, to_date2)
+        self.load_prev_year_data(from_date2, to_date2)
+
+    def load_prev_year_data(self, from_date, to_date):
+        market_data = self.get_empty_data()
+        fetched_sales = get_total_sales(self.con, from_date, to_date)
+        # TODO: why is my total sales matching Bobs 'total sales + open orders' column
         for cat, sales in fetched_sales:
-            market_name = cat_to_market.get(cat)
+            market_name = self.cat_to_market.get(cat)
             if market_name:
-                market_data_last_year[market_name][0] = sales
+                market_data[market_name][0] = sales
 
-        past_open_orders = get_open_orders_last_year(self.con, from_date2, to_date2)
+        past_open_orders = get_open_orders_last_year(self.con, from_date, to_date)
         for cat, sales in past_open_orders:
-            market_name = cat_to_market.get(cat)
+            market_name = self.cat_to_market.get(cat)
             if market_name:
-                market_data_last_year[market_name][1] = sales
+                market_data[market_name][3] = sales
 
-        self.calculate_totals(market_data_last_year)
-        self.fill_table(self.table_last_year, market_data_last_year)
-
+        self.calculate_totals(market_data)
+        self.fill_table(self.table_last_year, market_data)
 
     def get_empty_data(self):
         return {
@@ -176,8 +183,6 @@ class MFGReportWindow(QWidget):
         # grand total = total manufactured + distributed
         for i in range(4):
             market_data["Grand Total"][i] = (market_data["Total Manufactured"][i] + market_data["Distributed"][i])
-
-        return market_data
 
     # fills the cells in the UI table using market_data
     def fill_table(self, table, data):
