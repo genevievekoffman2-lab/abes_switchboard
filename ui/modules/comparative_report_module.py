@@ -1,3 +1,5 @@
+import os
+
 import openpyxl
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QAbstractItemView, QPushButton, QMessageBox
 from dateutil.relativedelta import relativedelta
@@ -5,8 +7,8 @@ from openpyxl.workbook import workbook
 import pprint
 
 from db.queries import get_sales_by_item_cr
-from services.ai_excel_generators.comp_report import generate_excel_report
-from services.generate_excel import add_titles_and_headers, open_excel, autosize_columns
+from services.excel_comp_report import add_titles_and_headers, add_data, load_excel
+from services.generate_excel import open_excel
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -87,22 +89,18 @@ class ComparativeReportWindow(QWidget):
 
         # generate excel
         excel_title = f"Sales by Category {from_date} - {to_date}"
-        subtitle = f"customers: {selected_customers}"
-        excel_headers = ['Item No', 'Description', 'Qty 2024', 'Qty 2025', 'Qty 2026']
-        workbook = self.generate_excel(excel_headers)
-        workbook = autosize_columns(workbook, excel_headers)
-        # open_excel(workbook)
+        # subtitle = f"For customers: {selected_customers}"
+        excel_headers = ["Item No", "Description", "QTY 2024", "QTY 2025", "QTY 2026", "", "Sales 2024", "Sales 2025", "Sales 2026"]
 
-        self.test_ai_gen()
+        self.load_excel(ds, excel_title, excel_headers)
 
-    def generate_excel(self, headers):
+    def load_excel(self, data, title, headers):
         workbook = openpyxl.Workbook()
         sheet = workbook.active
-        subtitle = "test"
-        title = "comp report"
-        sheet = add_titles_and_headers(sheet, title, subtitle, headers)
+        sheet.title = "Comparative Report"
 
-        return workbook
+        load_excel(sheet, headers, title, data)
+        open_excel(workbook)
 
     # builds a nested dictionary from the fetched data
     # a dictionary of key = category (adfield3) & value = another dic

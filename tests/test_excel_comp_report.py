@@ -1,9 +1,10 @@
-from services.ai_excel_generators.comp_report import generate_excel_report
-from services.generate_excel import open_excel
+import os
 
+import openpyxl
 
-def test_ai_gen_comp_report():
-    data = {
+from services.excel_comp_report import add_titles_and_headers, add_data, format_sheet, load_excel
+
+data = {
     '1': {
         '6': {'SF194DB': ['Cheesecake - Vanilla Bean 2"',
                            [398, 532, 880],
@@ -31,5 +32,11 @@ def test_ai_gen_comp_report():
     },
 }
 
-    wb = generate_excel_report(data)
-    open_excel(wb)
+def test_excel_comp_report():
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Comparative Report"
+    headers = ["Item No", "Description", "QTY 2024", "QTY 2025", "QTY 2026", "", "Sales 2024", "Sales 2025", "Sales 2026"]
+    load_excel(sheet, headers, "Comparative Report", data)
+    workbook.save("tmp.xlsx")
+    os.startfile("tmp.xlsx")

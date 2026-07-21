@@ -13,51 +13,126 @@
 '''
 
 import openpyxl
-from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 
-data = {
-    '1': {
-        '6': {'SF194DB': ['Cheesecake - Vanilla Bean 2"',
-                           [398, 532, 880],
-                           [28385, 40672, 68585]]},
-        '19': {'MIDI190': ['Flourless - Chocolate MIDI',
-                            [588, 561, 758],
-                            [24631, 25148, 34722]],
-               'MIDI194': ['Cheesecake - Vanilla Bean MIDI',
-                            [777, 754, 942],
-                            [32549, 33796, 43144]],
-               'ZSF202D': ['DO NOT USE Explosion - Chocolate 3"',
-                            [206, 98, 0],
-                            [12570, 6386, 0]]},
-        '3': {'SF184D': ['Mousse - Triple Chocolate 3"',
-                          [180, 228, 210],
-                          [11502, 15567, 14670]],
-              'SF189D': ['Layer - Carrot 3"',
-                          [170, 142, 144],
-                          [10863, 9214, 9565]]},
-    },
-    '2': {
-        '350': {'ABE350': ["Vegan Square Cake - ABE'S Corn Bread",
-                            [60, 110, 140],
-                            [1154, 2194, 2930]]},
-    },
+
+category_names = {
+    '1' : 'Cheesecake TD',
+    '2' : 'Vegan WNR',
+    '3' : 'Vegan TD',
+    '7' : 'Distributed'
 }
 
-CATEGORY_NAMES = {
-    '1': 'Total Cheesecake',
-    '2': 'Total Cheesecake',   # placeholder label per source report
-}
+def load_excel(sheet, headers, title, data):
+    add_titles_and_headers(sheet, title, headers)
+    add_data(data, sheet, headers)
+    format_sheet(sheet)
+
+def add_data(data, sheet, headers):
+    row_index = 3
+    grand_total_qty = [0, 0, 0]
+    grand_total_sales = [0, 0, 0]
+    sales_indices = [7,8,9] # adds $ formatting
+
+    for category, sizes in data.items():
+        # category header row
+        sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
+        row_index += 1
+
+        #track category totals
+        cat_total_qty = [0, 0, 0]
+        cat_total_sales = [0, 0, 0]
+
+        for size, items in sizes.items():
+            # track size totals (sub category)
+            sz_total_qty = [0,0,0]
+            sz_total_sales = [0,0,0]
+
+            # size header row
+            sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
+            row_index += 1
+
+            # records
+            for refid, record in items.items():
+                description, qtys, sales = record
+                values = [refid, description, qtys[0], qtys[1], qtys[2], "", sales[0], sales[1], sales[2]]
+                for col_index, value in enumerate(values, start=1):
+                    cell = sheet.cell(row=row_index, column=col_index)
+                    cell.value = value
+                    if col_index in sales_indices:
+                        cell.number_format = "$#,##0"
+                row_index += 1
+
+
+                # calc totals
+                for i in range(3):
+                    sz_total_qty[i] += qtys[i]
+                    sz_total_sales[i] += sales[i]
+                    cat_total_qty[i] += qtys[i]
+                    cat_total_sales[i] += sales[i]
+
+            # size total row
+            sz_total_values = ["", "", sz_total_qty[0], sz_total_qty[1], sz_total_qty[2], "", sz_total_sales[0], sz_total_sales[1], sz_total_sales[2]]
+            add_total_rows(sheet, sz_total_values, row_index)
+            row_index += 1
+
+            # empty row between sizes
+            row_index += 1
+
+        #total of each category
+        cat_total_values = ["", f"{category_names.get(category, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
+        add_total_rows(sheet, cat_total_values, row_index)
+
+        for i in range(3):
+            grand_total_qty[i] += cat_total_qty[i]
+            grand_total_sales[i] += cat_total_sales[i]
+
+        # two empty rows between categories
+        row_index += 2
+
+        #grand totals row
+        grand_total_values = ["", "Grand Total", grand_total_qty[0], grand_total_qty[1], grand_total_qty[2], "", grand_total_sales[0], grand_total_sales[1], grand_total_sales[2]]
+        add_total_rows(sheet, grand_total_values, row_index)
+
+def add_total_rows(sheet, row, row_index):
+    top_border_indices = [3,4,5,7,8,9] # columns that have bold top border
+    for col_index, value in enumerate(row, start=1):
+        cell = sheet.cell(row=row_index, column=col_index)
+        cell.value = value
+        cell.font = Font(bold=True)
+        if col_index in top_border_indices:
+            cell.border = Border(top=Side(style='medium'))  # top border
+        if col_index in [7,8,9]: #sales columns
+            cell.number_format = "$#,##0"
+
+def format_sheet(sheet):
+    col_widths = {
+        1: 15,  # item NO
+        2: 40,  # description
+        3: 10,  # qty2024
+        4: 10,  # qty2025
+        5: 10,  # qty2026
+        6: 10,  # sales2024
+        7: 10,  # sales2025
+        8: 10,  # sales2026
+    }
+
+    for col, width in col_widths.items():
+        sheet.column_dimensions[get_column_letter(col)].width = width
 
 
 def add_titles_and_headers(sheet, title, headers):
-    sheet.title = "Comparative Report"
+    # title row
+    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = sheet.cell(row=1, column=1)
+    title_cell.value = title
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = Alignment(horizontal="center")
 
 
     # write the headers
     for col, header in enumerate(headers, start=1):
-        cell = sheet.cell(row=1, column=col)
+        cell = sheet.cell(row=2, column=col)
         cell.value = header
-
-    return sheet
-
+        cell.font = Font(bold=True)
