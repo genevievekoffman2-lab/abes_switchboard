@@ -1,5 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QAbstractItemView, QPushButton
+import openpyxl
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QAbstractItemView, QPushButton, QMessageBox
+from dateutil.relativedelta import relativedelta
+from openpyxl.workbook import workbook
+import pprint
 
+from db.queries import get_sales_by_item_cr
+from services.ai_excel_generators.comp_report import generate_excel_report
+from services.generate_excel import add_titles_and_headers, open_excel, autosize_columns
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -47,4 +54,79 @@ class ComparativeReportWindow(QWidget):
         # self.select_all_btn.clicked.connect(self.select_all_customers)
 
 
+        self.generate_btn = QPushButton("Load Excel Report")
+        self.generate_btn.setObjectName("LoadBtn")
+        self.generate_btn.clicked.connect(self.generate_report)
+        layout.addWidget(self.generate_btn)
+
         self.setLayout(layout)
+
+
+    # logic when load button is clicked
+    def generate_report(self):
+        selected_customers = [item.text() for item in self.customer_list.selectedItems()]
+        from_date, to_date = self.date_selector.get_dates()
+
+        # at least one customer must be selected
+        if not selected_customers:
+            QMessageBox.warning(self, "Warning", "Please select at least one customer.")
+            return
+
+        if from_date > to_date:
+            QMessageBox.warning(self, "Warning", "From date must be before To date.")
+            return
+
+        #fetch data from Firebird
+        fetched_data_26 = get_sales_by_item_cr(self.con, selected_customers, from_date, to_date)
+        fetched_data_25 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=1)),
+                                               (to_date-relativedelta(years=1)))
+        fetched_data_24 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=2)),
+                                               (to_date - relativedelta(years=2)))
+        ds = self.organize_by_category(fetched_data_24, fetched_data_25, fetched_data_26)
+        pprint.pprint(ds)
+
+        # generate excel
+        excel_title = f"Sales by Category {from_date} - {to_date}"
+        subtitle = f"customers: {selected_customers}"
+        excel_headers = ['Item No', 'Description', 'Qty 2024', 'Qty 2025', 'Qty 2026']
+        workbook = self.generate_excel(excel_headers)
+        workbook = autosize_columns(workbook, excel_headers)
+        # open_excel(workbook)
+
+        self.test_ai_gen()
+
+    def generate_excel(self, headers):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        subtitle = "test"
+        title = "comp report"
+        sheet = add_titles_and_headers(sheet, title, subtitle, headers)
+
+        return workbook
+
+    # builds a nested dictionary from the fetched data
+    # a dictionary of key = category (adfield3) & value = another dic
+    # sub dict is key = size (adfield3) & value =
+    # (item no, descript, qty24, '25, '26, sales24, '25, 26, % of total sales, % oc core sales, % incr in sales)
+    def organize_by_category(self, data24, data25, data26):
+        temp = {}
+        # category : { size : { refid: [descript, [0,0,0], [0,0,0] } }
+        def add_rows(rows, year_index):
+            for refid, descr, cat, size, qty, sales in rows:
+                if cat not in temp:
+                    temp[cat] = {}
+                if size not in temp[cat]:
+                    temp[cat][size] = {}
+                if refid not in temp[cat][size]:
+                    temp[cat][size][refid] = [descr, [0,0,0], [0,0,0]]
+                        #first tuple of 0s is quantity '24 '25 '26
+                        #2nd tuple of 0s is sales '24 '25 '26
+                temp[cat][size][refid][1][year_index] = qty
+                temp[cat][size][refid][2][year_index] = sales
+
+        add_rows(data24, 0)
+        add_rows(data25, 1)
+        add_rows(data26, 2)
+
+        return temp
+

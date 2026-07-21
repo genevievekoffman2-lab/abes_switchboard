@@ -77,13 +77,8 @@ class Dashboard(QWidget):
 
     # logic when 'sales report' button is clicked
     def open_sales_report(self):
-        rows = get_all_cust(self.con)
-        customer_names = []  # will hold the names of each customer
-        for row in rows:
-            customer_names.append(row[0])
-
-        customer_names_sorted = sorted(customer_names)
-        self.sales_window = SalesReportWindow(customer_names_sorted, self.con)
+        customer_names = fetch_customers(self.con)
+        self.sales_window = SalesReportWindow(customer_names, self.con)
         self.sales_window.show()
 
     def open_open_orders(self):
@@ -91,16 +86,18 @@ class Dashboard(QWidget):
         self.sales_window.show()
 
     def open_comparative_report(self):
-        #rows = get_all_cust(self.con)
-        #customer_names = []
-        #for row in rows:
-        #    customer_names.append(row[0])
-
-        #customer_names_sorted = sorted(customer_names)
-        customer_names_sorted = ["whole foods WNR", "Whole foods LES", "Wegmans", "Morton Williams A", "Paris Baguette NJ",
-                                 "Paris Bag 2", "Amazon Fresh", "Amazon House", "Customer B", "AAA", "ZZZ", "ZZZ", "Little Italy"]
-        self.sales_window = ComparativeReportWindow(customer_names_sorted, self.con)
+        customer_names = fetch_customers(self.con)
+        self.sales_window = ComparativeReportWindow(customer_names, self.con)
         self.sales_window.show()
+
+# grabs list of all customers from DB; sorts them alphabetically
+def fetch_customers(con):
+    rows = get_all_cust(con)
+    customer_names = []
+    for row in rows:
+        customer_names.append(row[0])
+
+    return sorted(customer_names)
 
 def run_dashboard(con):
     app = QApplication(sys.argv)

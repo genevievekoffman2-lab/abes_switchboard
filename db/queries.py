@@ -156,3 +156,29 @@ def get_open_orders_last_year(con, from_date: date, to_date: date):
     rows = cursor.fetchall()
     cursor.close()
     return rows
+
+# gives us sales in the time range from the customers by item
+def get_sales_by_item_cr(con, customer_names: list, from_date: date, to_date: date):
+    placeholders = ",".join(["?" for _ in customer_names])  # creates a list filled with ? same len as customer names
+    query = f"""
+        SELECT 
+            det.REFID,
+            det.DESCRIPT,
+            i.ADFIELD2, 
+            i.ADFIELD3,
+            SUM(det.QTY),
+            SUM(det.EXTPRICE)
+        FROM INVOICE inv
+        JOIN INVDETL det ON inv.JOBNO = det.JOBNO 
+        JOIN ITEM i ON det.REFID = i.ITEMCODE
+        WHERE inv.CUSTNAME IN ({placeholders})
+        AND CAST(inv.INVDATE AS DATE) BETWEEN ? AND ?
+        GROUP BY det.REFID, det.DESCRIPT, i.ADFIELD2, i.ADFIELD3 
+        ORDER BY det.REFID 
+        """
+    params = customer_names + [from_date, to_date]
+    cursor = con.cursor()
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    cursor.close()
+    return rows
