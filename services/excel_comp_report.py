@@ -24,21 +24,21 @@ category_names = {
     '7' : 'Distributed'
 }
 
-def load_excel(sheet, headers, title, data):
-    add_titles_and_headers(sheet, title, headers)
+def load_excel(sheet, headers, title, subtitle, data):
+    add_titles_and_headers(sheet, title, subtitle, headers)
     add_data(data, sheet, headers)
     format_sheet(sheet)
 
 def add_data(data, sheet, headers):
-    row_index = 3
+    row_index = 4
     grand_total_qty = [0, 0, 0]
     grand_total_sales = [0, 0, 0]
     sales_indices = [7,8,9] # adds $ formatting
 
     for category, sizes in data.items():
         # category header row
-        sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
-        row_index += 1
+        # sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
+       # row_index += 1
 
         #track category totals
         cat_total_qty = [0, 0, 0]
@@ -81,7 +81,7 @@ def add_data(data, sheet, headers):
             row_index += 1
 
         #total of each category
-        cat_total_values = ["", f"{category_names.get(category, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
+        cat_total_values = ["", f"Total {category_names.get(category, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
         add_total_rows(sheet, cat_total_values, row_index)
 
         for i in range(3):
@@ -113,16 +113,16 @@ def format_sheet(sheet):
         3: 10,  # qty2024
         4: 10,  # qty2025
         5: 10,  # qty2026
-        6: 10,  # sales2024
-        7: 10,  # sales2025
-        8: 10,  # sales2026
+        6: 12,  # sales2024
+        7: 12,  # sales2025
+        8: 12,  # sales2026
     }
 
     for col, width in col_widths.items():
         sheet.column_dimensions[get_column_letter(col)].width = width
 
 
-def add_titles_and_headers(sheet, title, headers):
+def add_titles_and_headers(sheet, title, subtitle, headers):
     # title row
     sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
     title_cell = sheet.cell(row=1, column=1)
@@ -130,9 +130,15 @@ def add_titles_and_headers(sheet, title, headers):
     title_cell.font = Font(bold=True, size=14)
     title_cell.alignment = Alignment(horizontal="center")
 
+    # subtitle
+    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    title_cell = sheet.cell(row=2, column=1)
+    title_cell.value = subtitle
+    title_cell.font = Font(size=12)
+    title_cell.alignment = Alignment(horizontal="center", wrap_text=True)
 
-    # write the headers
+    # write the headers (start on row 3)
     for col, header in enumerate(headers, start=1):
-        cell = sheet.cell(row=2, column=col)
+        cell = sheet.cell(row=3, column=col)
         cell.value = header
-        cell.font = Font(bold=True)
+        cell.font = Font(bold=True,size=12)

@@ -76,17 +76,17 @@ class ComparativeReportWindow(QWidget):
 
         # generate excel
         excel_title = f"Sales by Category {from_date} - {to_date}"
-        # subtitle = f"For customers: {selected_customers}"
+        subtitle = f"For Customer(s): {selected_customers}"
         excel_headers = ["Item No", "Description", "QTY 2024", "QTY 2025", "QTY 2026", "", "Sales 2024", "Sales 2025", "Sales 2026"]
 
-        self.load_excel(ds, excel_title, excel_headers)
+        self.load_excel(ds, excel_title, subtitle, excel_headers)
 
-    def load_excel(self, data, title, headers):
+    def load_excel(self, data, title, subtitle, headers):
         workbook = openpyxl.Workbook()
         sheet = workbook.active
         sheet.title = "Comparative Report"
 
-        load_excel(sheet, headers, title, data)
+        load_excel(sheet, headers, title, subtitle, data)
         open_excel(workbook)
 
     # builds a nested dictionary from the fetched data
