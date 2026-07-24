@@ -12,6 +12,8 @@ from models.invoice_record import InvoiceRecord
 from services.aggregators import aggregate_by_customer, aggregate_by_item
 from services.generate_excel import open_excel, gen_excel, autosize_columns, format_units
 from services.mappers import cast_to_invoice_records
+from ui.components import customer_selection
+from ui.components.customer_selection import CustomerSelection
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -35,22 +37,8 @@ class SalesReportWindow(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout()
 
-        label = QLabel("Select customers:")
-        layout.addWidget(label)
-
-        # customer list
-        self.customer_list = QListWidget()
-        self.customer_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.customer_list.addItems(self.customers)
+        self.customer_list = CustomerSelection(self.customers)
         layout.addWidget(self.customer_list)
-
-        # select all button
-        self.select_all_btn = QPushButton("☐ Select All")
-        self.select_all_btn.setObjectName("select_all_btn")
-        self.select_all_btn.setFixedWidth(100)
-        layout.addWidget(self.select_all_btn)
-        self.select_all_btn.clicked.connect(self.select_all_customers)
-
         # date range
         date_label = QLabel("Date range")
         layout.addWidget(date_label)
@@ -76,7 +64,7 @@ class SalesReportWindow(QWidget):
 
     # logic when generate report button is pressed
     def generate_report(self):
-        selected_customers = [item.text() for item in self.customer_list.selectedItems()]
+        selected_customers = self.customer_list.get_selected_customers()
         from_date, to_date = self.date_selector.get_dates()
 
         # at least one customer must be selected
@@ -98,7 +86,7 @@ class SalesReportWindow(QWidget):
             invoices = [r for r in invoices if not r.is_distributor]
 
 
-        if self.select_all_btn.text() == "☑ Select All":
+        if self.customer_list.is_select_all():
             customers_str = "All Customers"
         else:
             customers_str = ", ".join(selected_customers)
@@ -126,22 +114,6 @@ class SalesReportWindow(QWidget):
         workbook = format_units(workbook, sales_col, percent_cols)
 
         open_excel(workbook)
-
-
-    def select_all_customers(self):
-        all_selected = all(
-            self.customer_list.item(i).isSelected()
-            for i in range(self.customer_list.count())
-        )
-        if all_selected:
-            #deselect all
-            self.customer_list.clearSelection()
-            self.select_all_btn.setText("☐ Select All")
-        else:
-            #select all
-            for i in range(self.customer_list.count()):
-                self.customer_list.item(i).setSelected(True)
-            self.select_all_btn.setText("☑ Select All")
 
     # creates a radio button pair & returns btn1, btn2, group
     def make_radio_pair(self,label, btn1label, btn2label, layout):

@@ -1,14 +1,12 @@
-import os
-
 import openpyxl
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QAbstractItemView, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QApplication
 from dateutil.relativedelta import relativedelta
-from openpyxl.workbook import workbook
 import pprint
 
 from db.queries import get_sales_by_item_cr
-from services.excel_comp_report import add_titles_and_headers, add_data, load_excel
+from services.excel_comp_report import load_excel
 from services.generate_excel import open_excel
+from ui.components.customer_selection import CustomerSelection
 from ui.components.date_range_selector import DateRangeSelector
 
 
@@ -18,11 +16,14 @@ class ComparativeReportWindow(QWidget):
         self.customers = customers
         self.con = con
         self.setWindowTitle("Comparative Report")
+        # window size is 3/4 screen size
+        screen = QApplication.primaryScreen().geometry()
+        self.resize(int(screen.width() * 0.5), int(screen.height() * 0.75))
         self._load_styles()
         self._build_ui()
 
     def _load_styles(self):
-        with open("ui/styles/comparative_report.qss", "r") as f:
+        with open("ui/styles/sales_report.qss", "r") as f:
             self.setStyleSheet(f.read())
 
     def _build_ui(self):
@@ -38,22 +39,8 @@ class ComparativeReportWindow(QWidget):
         layout.addWidget(self.date_selector)
 
 
-        cust_label = QLabel("Select customers:")
-        cust_label.setObjectName("h1")
-        layout.addWidget(cust_label)
-
-        # customer list
-        self.customer_list = QListWidget()
-        self.customer_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.customer_list.addItems(self.customers)
-        layout.addWidget(self.customer_list)
-
-        # select all button
-        self.select_all_btn = QPushButton("☐ Select All")
-        self.select_all_btn.setObjectName("select_all_btn")
-        self.select_all_btn.setFixedWidth(100)
-        layout.addWidget(self.select_all_btn)
-        # self.select_all_btn.clicked.connect(self.select_all_customers)
+        self.customer_selector = CustomerSelection(self.customers)
+        layout.addWidget(self.customer_selector)
 
 
         self.generate_btn = QPushButton("Load Excel Report")
@@ -66,7 +53,7 @@ class ComparativeReportWindow(QWidget):
 
     # logic when load button is clicked
     def generate_report(self):
-        selected_customers = [item.text() for item in self.customer_list.selectedItems()]
+        selected_customers = self.customer_selector.get_selected_customers()
         from_date, to_date = self.date_selector.get_dates()
 
         # at least one customer must be selected
