@@ -9,7 +9,14 @@
     - one row per item
     - 2 blank rows between categories
     - a grand total row at the very end
-    -
+
+
+    Excel should have sections s.t.
+        total cheesecake
+        total vegan WNR
+        total Vegan TD
+        total other
+        grand total
 '''
 
 import openpyxl
@@ -18,7 +25,7 @@ from openpyxl.utils import get_column_letter
 
 
 category_names = {
-    '1' : 'Cheesecake TD',
+    '1' : 'Cheesecake',
     '2' : 'Vegan WNR',
     '3' : 'Vegan TD',
     '7' : 'Distributed'
@@ -35,17 +42,15 @@ def add_data(data, sheet, headers):
     grand_total_sales = [0, 0, 0]
     sales_indices = [7,8,9] # adds $ formatting
 
-    for category, sizes in data.items():
-        # category header row
-        # sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
-       # row_index += 1
-
-        #track category totals
+    order = ['1','2','3','7'] # the order we are outputting in excel sheet
+    for cat in order:
+        sizes = data[cat]
+        # tracks category totals
         cat_total_qty = [0, 0, 0]
         cat_total_sales = [0, 0, 0]
 
         for size, items in sizes.items():
-            # track size totals (sub category)
+            # tracks size totals (sub category)
             sz_total_qty = [0,0,0]
             sz_total_sales = [0,0,0]
 
@@ -77,11 +82,11 @@ def add_data(data, sheet, headers):
             add_total_rows(sheet, sz_total_values, row_index)
             row_index += 1
 
-            # empty row between sizes
-            row_index += 1
+        # empty row between sizes
+        row_index += 1
 
-        #total of each category
-        cat_total_values = ["", f"Total {category_names.get(category, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
+        # total of each category
+        cat_total_values = ["", f"Total {category_names.get(cat, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
         add_total_rows(sheet, cat_total_values, row_index)
 
         for i in range(3):
@@ -90,6 +95,13 @@ def add_data(data, sheet, headers):
 
         # two empty rows between categories
         row_index += 2
+
+        # if we just finished category 3 (Total Vegan TD) -> print the total so far -> this is Total Core
+        if cat == '3':
+            core_totals = ["", "Total Core", grand_total_qty[0], grand_total_qty[1], grand_total_qty[2], "",
+                           grand_total_sales[0], grand_total_sales[1], grand_total_sales[2]]
+            add_total_rows(sheet, core_totals, row_index)
+            row_index += 2
 
         #grand totals row
         grand_total_values = ["", "Grand Total", grand_total_qty[0], grand_total_qty[1], grand_total_qty[2], "", grand_total_sales[0], grand_total_sales[1], grand_total_sales[2]]
