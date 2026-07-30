@@ -46,6 +46,7 @@ class Dashboard(QWidget):
         grid.addWidget(self._make_card("Sales Report", "Rankings by customer & date", "#dbeafe", self.open_sales_report), 0, 0)
         grid.addWidget(self._make_card("Open Orders", "Open orders & total sales ", "#dcfce7", self.open_open_orders), 0, 1)
         grid.addWidget(self._make_card("Comparative Report", "Sales by item for past 3 years", "dbeafe", self.open_comparative_report), 0, 2)
+        grid.addWidget(self._make_card("Vendor Days Outstanding", "Vendor Days Outstanding", "dbeafe", self.open_epr_report), 0, 3)
         grid.addWidget(self._make_card("EPR", "EPR Sales for plastic tax in 7 states", "dcfce7", self.open_epr_report), 1, 0)
         grid.addWidget(self._make_card("Module 4", "Coming soon", "#fce7f3", None), 1, 1)
 

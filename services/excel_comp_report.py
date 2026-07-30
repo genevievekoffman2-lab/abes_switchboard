@@ -18,6 +18,8 @@
         total other
         grand total
 '''
+import pprint
+from asyncio.windows_events import NULL
 
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
@@ -33,79 +35,133 @@ category_names = {
 
 def load_excel(sheet, headers, title, subtitle, data):
     add_titles_and_headers(sheet, title, subtitle, headers)
-    add_data(data, sheet, headers)
+    rows = flatten_data(data)
+    loadRows(sheet, rows)
     format_sheet(sheet)
 
-def add_data(data, sheet, headers):
-    row_index = 4
+def loadRows(sheet, rows):
+    row_num = 5
+    for row in rows:
+        r = []
+        if row["type"] == "record":
+            flatten(row["data"], r)
+            write_row(sheet, row_num, r)
+        elif row["type"] == "ttl size":
+            total_row = ["", "", row["total qty"], "", row["total sales"]]
+            flatten(total_row, r)
+            add_total_rows(sheet, r, row_num)
+            row_num += 1
+            pass
+        elif row["type"] == "total cat" or row["type"] == "total core" or row["type"] == "grand total":
+            total_row = ["", f"{row["label"]}", row["total qty"], "", row["total sales"], "", row.get("sales_ratios", []), "", row.get("core_ratios", [])]
+            flatten(total_row, r)
+            add_total_rows(sheet, r, row_num)
+            row_num += 1
+        else:
+            write_row(sheet, row_num, row)
+        row_num += 1
+
+# breaking a nested list into a flat list
+def flatten(value, row):
+    if isinstance(value, list):
+        for v in value:
+            flatten(v, row)
+    else:
+        row.append(value)
+
+
+def write_row(sheet, row_index, row):
+    for col, value in enumerate(row, start=1):
+        sheet.cell(row=row_index, column=col).value = value
+
+
+# make all the data into a list of records prepared to print
+# adds total rows
+# outputs a list of [print format, data]
+def flatten_data(data):
+    rows = []
     grand_total_qty = [0, 0, 0]
     grand_total_sales = [0, 0, 0]
-    sales_indices = [7,8,9] # adds $ formatting
+    sorted_cat = sorted(data.keys())
 
-    order = ['1','2','3','7'] # the order we are outputting in excel sheet
-    for cat in order:
-        sizes = data[cat]
+    for cat in sorted_cat:
+        sizes = data.get(cat)
         # tracks category totals
-        cat_total_qty = [0, 0, 0]
-        cat_total_sales = [0, 0, 0]
+        cat_total_qty, cat_total_sales = [0, 0, 0], [0, 0, 0]
 
+        # cont as long as there's rec in the category
         for size, items in sizes.items():
             # tracks size totals (sub category)
-            sz_total_qty = [0,0,0]
-            sz_total_sales = [0,0,0]
-
-            # size header row
-            sheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=len(headers))
-            row_index += 1
+            sz_total_qty, sz_total_sales = [0,0,0], [0,0,0]
 
             # records
-            for refid, record in items.items():
-                description, qtys, sales = record
-                values = [refid, description, qtys[0], qtys[1], qtys[2], "", sales[0], sales[1], sales[2]]
-                for col_index, value in enumerate(values, start=1):
-                    cell = sheet.cell(row=row_index, column=col_index)
-                    cell.value = value
-                    if col_index in sales_indices:
-                        cell.number_format = "$#,##0"
-                row_index += 1
+            for refid, (description, qtys, sales) in items.items():
+                rec = {
+                    "type" : "record",
+                    "category": cat,
+                    "size": size,
+                    "data" : [refid, description, qtys, "", sales] #qtys & sales is form: [x,x,x] "" is empty col
+                }
+                rows.append(rec)
+                # compute total of size (sub cat)
+                sz_total_qty = [a + b for a,b in zip(sz_total_qty, qtys)]
+                sz_total_sales = [a + b for a,b in zip(sz_total_sales, sales)]
 
+            # add the sub cat (size) total row
+            rows.append({
+                "type": "ttl size",
+                "category": cat,
+                "size": size,
+                "total qty": sz_total_qty,
+                "total sales": sz_total_sales
+            })
+            cat_total_qty = [a+b for a,b in zip(cat_total_qty, sz_total_qty)]
+            cat_total_sales = [a+b for a,b in zip(cat_total_sales, sz_total_sales)]
 
-                # calc totals
-                for i in range(3):
-                    sz_total_qty[i] += qtys[i]
-                    sz_total_sales[i] += sales[i]
-                    cat_total_qty[i] += qtys[i]
-                    cat_total_sales[i] += sales[i]
+        # add the category totals
+        rows.append({
+            "type": "total cat",
+            "label": f"Total {category_names.get(cat, 'Other')}",
+            "total qty": cat_total_qty,
+            "total sales": cat_total_sales
+        })
+        grand_total_qty = [a+b for a,b in zip(grand_total_qty, cat_total_qty)]
+        grand_total_sales = [a+b for a,b in zip(grand_total_sales, cat_total_sales)]
 
-            # size total row
-            sz_total_values = ["", "", sz_total_qty[0], sz_total_qty[1], sz_total_qty[2], "", sz_total_sales[0], sz_total_sales[1], sz_total_sales[2]]
-            add_total_rows(sheet, sz_total_values, row_index)
-            row_index += 1
-
-        # empty row between sizes
-        row_index += 1
-
-        # total of each category
-        cat_total_values = ["", f"Total {category_names.get(cat, 'Other')}", cat_total_qty[0], cat_total_qty[1], cat_total_qty[2], "", cat_total_sales[0], cat_total_sales[1], cat_total_sales[2]]
-        add_total_rows(sheet, cat_total_values, row_index)
-
-        for i in range(3):
-            grand_total_qty[i] += cat_total_qty[i]
-            grand_total_sales[i] += cat_total_sales[i]
-
-        # two empty rows between categories
-        row_index += 2
-
-        # if we just finished category 3 (Total Vegan TD) -> print the total so far -> this is Total Core
+        # add a total core row after category 3
         if cat == '3':
-            core_totals = ["", "Total Core", grand_total_qty[0], grand_total_qty[1], grand_total_qty[2], "",
-                           grand_total_sales[0], grand_total_sales[1], grand_total_sales[2]]
-            add_total_rows(sheet, core_totals, row_index)
-            row_index += 2
+            rows.append({
+                "type" : "total core",
+                "label" : "Total Core",
+                "total qty": grand_total_qty,
+                "total sales": grand_total_sales
+            })
+            # compute '% of Core Sales'
+            compute_percents(rows, grand_total_sales, "core_ratios")
 
-        #grand totals row
-        grand_total_values = ["", "Grand Total", grand_total_qty[0], grand_total_qty[1], grand_total_qty[2], "", grand_total_sales[0], grand_total_sales[1], grand_total_sales[2]]
-        add_total_rows(sheet, grand_total_values, row_index)
+    # add the grand category totals
+    rows.append({
+        "type": "grand total",
+        "label": "Grand Total",
+        "total qty": grand_total_qty,
+        "total sales": grand_total_sales
+    })
+
+    compute_percents(rows, grand_total_sales, "sales_ratios")
+    return rows
+
+# adds percentage of sales to a total row; key_name: [x,x,x]
+def compute_percents(rows, ttl_sales, key_name):
+    for row in rows:
+        if "total" in row["type"]:
+            row[key_name] = get_sales_ratio(row["total sales"], ttl_sales)
+
+# given the sales and grand sales, computes the ratio and returns it [x,x,x]
+def get_sales_ratio(total_sales, grand_total_sales):
+    return [
+            sales / grand if grand else None
+            for sales, grand in zip(total_sales, grand_total_sales)
+        ]
 
 def add_total_rows(sheet, row, row_index):
     top_border_indices = [3,4,5,7,8,9] # columns that have bold top border
@@ -117,17 +173,27 @@ def add_total_rows(sheet, row, row_index):
             cell.border = Border(top=Side(style='medium'))  # top border
         if col_index in [7,8,9]: #sales columns
             cell.number_format = "$#,##0"
+        if col_index in [11,12,13, 15,16,17]: # % of sales columns
+            cell.number_format = "0.0%"
 
 def format_sheet(sheet):
     col_widths = {
         1: 15,  # item NO
         2: 40,  # description
         3: 10,  # qty2024
-        4: 10,  # qty2025
-        5: 10,  # qty2026
-        6: 12,  # sales2024
-        7: 12,  # sales2025
-        8: 12,  # sales2026
+        4: 10,
+        5: 10,
+        7: 12,  # sales2024
+        8: 12,
+        9: 12,
+        10: 2,
+        11: 12, # %sales2024
+        12: 12,
+        13: 12,
+        14: 2,
+        15: 12,
+        16: 12
+        #TODO: shorten this list / make default 12?
     }
 
     for col, width in col_widths.items():
@@ -143,11 +209,21 @@ def add_titles_and_headers(sheet, title, subtitle, headers):
     title_cell.alignment = Alignment(horizontal="center")
 
     # subtitle
-    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=5)
     title_cell = sheet.cell(row=2, column=1)
     title_cell.value = subtitle
     title_cell.font = Font(size=12)
     title_cell.alignment = Alignment(horizontal="center", wrap_text=True)
+
+    # added % labels into subtitle row
+    sheet.merge_cells(start_row=2, start_column=11, end_row=2, end_column=13)
+    percent_label = sheet.cell(row=2, column=11)
+    percent_label.value = "% of Sales"
+    percent_label.alignment = Alignment(horizontal="center", wrap_text=True)
+    sheet.merge_cells(start_row=2, start_column=15, end_row=2, end_column=18)
+    percent_label2 = sheet.cell(row=2, column=15)
+    percent_label2.value = "% of Core Sales"
+    percent_label2.alignment = Alignment(horizontal="center", wrap_text=True)
 
     # write the headers (start on row 3)
     for col, header in enumerate(headers, start=1):

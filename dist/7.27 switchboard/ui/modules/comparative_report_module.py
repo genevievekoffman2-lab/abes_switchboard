@@ -77,7 +77,7 @@ class ComparativeReportWindow(QWidget):
         # generate excel
         excel_title = f"Sales by Category {from_date} - {to_date}"
         subtitle = f"For Customer(s): {selected_customers}"
-        excel_headers = ["Item No", "Description", "QTY 2024", "QTY 2025", "QTY 2026", "", "Sales 2024", "Sales 2025", "Sales 2026"]
+        excel_headers = ["Item No", "Description", "QTY 2024", "QTY 2025", "QTY 2026", "", "Saa 2024", "Sales 2025", "Sales 2026", "", "2024", "2025", "2026"]
 
         self.load_excel(ds, excel_title, subtitle, excel_headers)
 
