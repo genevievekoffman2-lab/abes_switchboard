@@ -39,7 +39,7 @@ class MFGReportWindow(QWidget):
         layout.addWidget(date_label)
 
         self.date_selector = DateRangeSelector()
-        self.date_selector.setFixedWidth(300)
+        self.date_selector.setFixedWidth(500)
         layout.addWidget(self.date_selector)
 
         # load button

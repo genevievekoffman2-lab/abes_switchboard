@@ -20,34 +20,6 @@ QLabel {
     background-color: transparent;
 }
 
-QDateEdit {
-    background-color: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 13px;
-    color: #212529;
-}
-
-QDateEdit:focus {
-    border: 1px solid #1d4ed8;
-}
-
-QDateEdit::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: right center;
-    width: 24px;
-    border-left: 1px solid #dee2e6;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
-}
-
-QDateEdit::down-arrow {
-    image: url(assets/arrow.png);
-    width: 12px;
-    height: 12px;
-}
-
 QPushButton#load_btn {
     background-color: #1d4ed8;
     color: white;
