@@ -1,4 +1,5 @@
 # module for MFG/Sales/Open orders
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QHeaderView, QTableWidgetItem, \
     QSizePolicy, QApplication, QMessageBox
@@ -83,9 +84,10 @@ class MFGReportWindow(QWidget):
         table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         table.verticalHeader().setDefaultSectionSize(35)
         table.setFont(self.font())
-        table.setColumnCount(5)
+        column_labels = ["", "Total Sales", "Total Open Orders", "Total Sales Including Open Orders", "Open Orders after to-be shipped date"]
+        table.setColumnCount(len(column_labels))
         table.setRowCount(len(SUBMARKETS))
-        table.setHorizontalHeaderLabels(["", "Total Sales", "Total Open Orders", "Total Sales Including Open Orders", "Open Orders after to-be shipped date"])
+        table.setHorizontalHeaderLabels(column_labels)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # read only
         table.verticalHeader().setVisible(False)  # hide row numbers
@@ -105,29 +107,41 @@ class MFGReportWindow(QWidget):
             QMessageBox.warning(self, "Warning", "From date must be before To date.")
             return
 
+
         # begin the spinner
         self.spinner.start()
-        self.worker = Worker(self.fetch_data, from_date, to_date)
-        self.worker.finished.connect(
-            lambda result: self.on_done(result, from_date, to_date)
+        self.pending_loads = 2
+
+        self.worker_one = Worker(self.fetch_curr_year_data, from_date, to_date)
+        self.worker_one.finished.connect(
+            lambda result: self.on_done(self.table_current, result, from_date, to_date)
         ) # done fetching data
-        self.worker.error.connect(self.on_error)
-        self.worker.start()
+        self.worker_one.error.connect(self.on_error)
+        self.worker_one.start()
 
-    # when fetch_data is done running - thread returns here
-    def on_done(self, market_data, from_date, to_date):
-        # after filled, fill the totals
-        self.calculate_totals(market_data)
-        self.fill_table(self.table_current, market_data)
-
-        # do the same for market_data_last_year
         from_date2 = from_date.replace(year=from_date.year - 1)
         to_date2 = to_date.replace(year=to_date.year - 1)
-        self.spinner.stop()
-        self.load_btn.setEnabled(True)
-        self.load_prev_year_data(from_date2, to_date2)
+        self.worker_two = Worker(self.load_prev_year_data,from_date2, to_date2)
+        self.worker_two.finished.connect(
+            lambda result: self.on_done(self.table_last_year, result, from_date2, to_date2)
+        )
+        self.worker_two.error.connect(self.on_error)
+        self.worker_two.start()
 
-    def fetch_data(self, from_date, to_date):
+    # when fetching data is done running - thread returns here
+    def on_done(self, table, market_data, from_date, to_date):
+        # after filled, fill the totals
+        if table == self.table_current:
+            self.calculate_totals(market_data)
+            self.fill_table(table, market_data)
+        self.pending_loads -= 1
+
+        if self.pending_loads == 0:
+            self.add_percent_change_column()
+            self.spinner.stop()
+            self.load_btn.setEnabled(True)
+
+    def fetch_curr_year_data(self, from_date, to_date):
         # structure to fill before writing into table
         market_data = self.get_empty_data()
 
@@ -154,13 +168,13 @@ class MFGReportWindow(QWidget):
         # check for any accounting adjustments
         adjustments = get_sales_adjustments(self.con, from_date, to_date)
         self.update_with_adjustments(market_data, adjustments)
-
+        self.table_current_loaded = True
         return market_data
 
     def load_prev_year_data(self, from_date, to_date):
         market_data = self.get_empty_data()
         fetched_sales = get_total_sales(self.con, from_date, to_date)
-        # TODO: why is my total sales matching Bobs 'total sales + open orders' column
+
         for cat, sales in fetched_sales:
             market_name = self.cat_to_market.get(cat)
             if market_name:
@@ -174,6 +188,7 @@ class MFGReportWindow(QWidget):
 
         self.calculate_totals(market_data)
         self.fill_table(self.table_last_year, market_data)
+        self.table_last_year_loaded = True
 
     def get_empty_data(self):
         return {
@@ -209,8 +224,6 @@ class MFGReportWindow(QWidget):
         for row_index, (market, values) in enumerate(data.items()):
             for col_index, value in enumerate(values, start=1):
                 item = QTableWidgetItem(f"${value:,.2f}")
-                # self.set_cell(f"${value:,.2f}", row_index, col_index)
-
                 # adds UI highlighting for grand total row
                 if row_index == table.rowCount() - 1:
                     item.setBackground(QColor("#dbeafe"))
@@ -232,3 +245,29 @@ class MFGReportWindow(QWidget):
         self.spinner.stop()
         self.load_btn.setEnabled(True)
         print(f"Load failed: {e}")
+
+    def add_percent_change_column(self):
+        row_count = self.table_current.rowCount()
+        col_count = self.table_current.columnCount()
+
+        self.table_current.insertColumn(col_count)
+        self.table_current.setHorizontalHeaderItem(col_count, QTableWidgetItem("% Change"))
+
+        for row in range(row_count):
+            # ( curr year sales - prev year sales ) / prev year sales x 100
+            prev_yr_sale = self.parse_currency(self.table_last_year.item(row,1).text())
+            curr_yr_sale = self.parse_currency(self.table_current.item(row, 1).text())
+            pct_change = (curr_yr_sale - prev_yr_sale) / prev_yr_sale * 100
+            change = QTableWidgetItem(f"{pct_change:.0f}%")
+
+            if pct_change > 0:
+                change.setForeground(QColor('#2e7d32')) #green
+            elif pct_change < 0:
+                change.setForeground(QColor("#c62828")) #red
+
+            self.table_current.setItem(row, col_count, change)
+
+    def parse_currency(self, value_str):
+        """Convert '$231,999.09 -> 231999.09'"""
+        cleaned = value_str.replace('$', '').replace(',','').strip()
+        return float(cleaned)

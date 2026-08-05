@@ -50,7 +50,7 @@ QTableWidget {
 QTableWidget::item {
     padding: 10px 14px;
     border-bottom: 1px solid #f1f3f5;
-    color: #212529;
+
 }
 
 QTableWidget::item:selected {
