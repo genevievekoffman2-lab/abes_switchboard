@@ -1,12 +1,13 @@
 # module for MFG/Sales/Open orders
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QHeaderView, QTableWidgetItem, \
-    QSizePolicy, QApplication
+    QSizePolicy, QApplication, QMessageBox
 
 from db.queries import get_total_sales, get_sales_adjustments, get_open_orders_last_year, \
     get_open_orders_, get_open_orders_after_date
 from ui.components.date_range_selector import DateRangeSelector
-
+from ui.components.loading_spinner import LoadingSpinner
+from ui.components.worker import Worker
 
 class MFGReportWindow(QWidget):
     def __init__(self, con):
@@ -60,6 +61,9 @@ class MFGReportWindow(QWidget):
         self.table_last_year = self.build_table()
         layout.addWidget(self.table_last_year)
 
+        # load spinner
+        self.spinner = LoadingSpinner(parent=self, size=28) # spinner is parent of itself, not added to the layout
+
         self.setLayout(layout)
 
     def build_table(self):
@@ -97,8 +101,33 @@ class MFGReportWindow(QWidget):
     def load_orders(self):
         from_date, to_date = self.date_selector.get_dates()
 
-        #TODO make sure the dates are selected
+        if from_date > to_date:
+            QMessageBox.warning(self, "Warning", "From date must be before To date.")
+            return
 
+        # begin the spinner
+        self.spinner.start()
+        self.worker = Worker(self.fetch_data, from_date, to_date)
+        self.worker.finished.connect(
+            lambda result: self.on_done(result, from_date, to_date)
+        ) # done fetching data
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
+
+    # when fetch_data is done running - thread returns here
+    def on_done(self, market_data, from_date, to_date):
+        # after filled, fill the totals
+        self.calculate_totals(market_data)
+        self.fill_table(self.table_current, market_data)
+
+        # do the same for market_data_last_year
+        from_date2 = from_date.replace(year=from_date.year - 1)
+        to_date2 = to_date.replace(year=to_date.year - 1)
+        self.spinner.stop()
+        self.load_btn.setEnabled(True)
+        self.load_prev_year_data(from_date2, to_date2)
+
+    def fetch_data(self, from_date, to_date):
         # structure to fill before writing into table
         market_data = self.get_empty_data()
 
@@ -116,8 +145,6 @@ class MFGReportWindow(QWidget):
                 market_data[market_name][1] = open_orders
 
         fetched_future_open_orders = get_open_orders_after_date(self.con, from_date, to_date)
-        for futureorder in fetched_future_open_orders:
-            print(futureorder)
 
         for cat, future_open_orders in fetched_future_open_orders:
             market_name = self.cat_to_market.get(cat)
@@ -128,14 +155,7 @@ class MFGReportWindow(QWidget):
         adjustments = get_sales_adjustments(self.con, from_date, to_date)
         self.update_with_adjustments(market_data, adjustments)
 
-        # after filled, fill the totals
-        self.calculate_totals(market_data)
-        self.fill_table(self.table_current, market_data)
-
-        # do the same for market_data_last_year
-        from_date2 = from_date.replace(year=from_date.year-1)
-        to_date2 = to_date.replace(year=to_date.year-1)
-        self.load_prev_year_data(from_date2, to_date2)
+        return market_data
 
     def load_prev_year_data(self, from_date, to_date):
         market_data = self.get_empty_data()
@@ -191,7 +211,7 @@ class MFGReportWindow(QWidget):
                 item = QTableWidgetItem(f"${value:,.2f}")
                 # self.set_cell(f"${value:,.2f}", row_index, col_index)
 
-                # adds UI highlighting for grand total row TODO: fix this; row is not being highlighted
+                # adds UI highlighting for grand total row
                 if row_index == table.rowCount() - 1:
                     item.setBackground(QColor("#dbeafe"))
                     item.setForeground(QColor("#1d4ed8"))
@@ -207,3 +227,8 @@ class MFGReportWindow(QWidget):
 
         # update the value for Total Sales and vegan WNR
         market_data["Vegan WNR"][0] += total
+
+    def on_error(self, e):
+        self.spinner.stop()
+        self.load_btn.setEnabled(True)
+        print(f"Load failed: {e}")

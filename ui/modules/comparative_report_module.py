@@ -8,6 +8,8 @@ from services.excel_comp_report import load_excel
 from services.generate_excel import open_excel
 from ui.components.customer_selection import CustomerSelection
 from ui.components.date_range_selector import DateRangeSelector
+from ui.components.loading_spinner import LoadingSpinner
+from ui.components.worker import Worker
 
 
 class ComparativeReportWindow(QWidget):
@@ -38,15 +40,15 @@ class ComparativeReportWindow(QWidget):
         self.date_selector.setFixedWidth(500)
         layout.addWidget(self.date_selector)
 
-
         self.customer_selector = CustomerSelection(self.customers)
         layout.addWidget(self.customer_selector)
-
 
         self.generate_btn = QPushButton("Load Excel Report")
         self.generate_btn.setObjectName("LoadBtn")
         self.generate_btn.clicked.connect(self.generate_report)
         layout.addWidget(self.generate_btn)
+        # load spinner
+        self.spinner = LoadingSpinner(parent=self, size=28)
 
         self.setLayout(layout)
 
@@ -65,13 +67,17 @@ class ComparativeReportWindow(QWidget):
             QMessageBox.warning(self, "Warning", "From date must be before To date.")
             return
 
-        #fetch data from Firebird
-        fetched_data_26 = get_sales_by_item_cr(self.con, selected_customers, from_date, to_date)
-        fetched_data_25 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=1)),
-                                               (to_date-relativedelta(years=1)))
-        fetched_data_24 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=2)),
-                                               (to_date - relativedelta(years=2)))
-        ds = self.organize_by_category(fetched_data_24, fetched_data_25, fetched_data_26)
+        # begin the spinner
+        self.spinner.start()
+        self.worker = Worker(self.fetch_data, from_date, to_date, selected_customers)
+        self.worker.finished.connect(
+            lambda result: self.on_done(result, from_date, to_date, selected_customers)
+        ) # done fetching data
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
+
+    # when fetch_data is done running - thread returns here
+    def on_done(self, ds, from_date, to_date, selected_customers):
         # generate excel
         excel_title = f"Sales by Category {from_date} - {to_date}"
         subtitle = f"For Customer(s): {selected_customers}"
@@ -79,6 +85,16 @@ class ComparativeReportWindow(QWidget):
                          "Sales 2026", "", "2024", "2025", "2026", "", "2024", "2025", "2026"]
 
         self.load_excel(ds, excel_title, subtitle, excel_headers)
+
+    def fetch_data(self, from_date, to_date, selected_customers):
+        # fetch data from Firebird
+        fetched_data_26 = get_sales_by_item_cr(self.con, selected_customers, from_date, to_date)
+        fetched_data_25 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=1)),
+                                               (to_date - relativedelta(years=1)))
+        fetched_data_24 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=2)),
+                                               (to_date - relativedelta(years=2)))
+        ds = self.organize_by_category(fetched_data_24, fetched_data_25, fetched_data_26)
+        return ds
 
     def load_excel(self, data, title, subtitle, headers):
         workbook = openpyxl.Workbook()
@@ -114,3 +130,7 @@ class ComparativeReportWindow(QWidget):
 
         return temp
 
+    def on_error(self, e):
+        self.spinner.stop()
+        self.generate_btn.setEnabled(True)
+        print(f"Load failed: {e}")
