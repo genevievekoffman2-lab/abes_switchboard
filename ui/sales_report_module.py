@@ -116,7 +116,7 @@ class SalesReportWindow(QWidget):
         open_excel(workbook)
 
     # creates a radio button pair & returns btn1, btn2, group
-    def make_radio_pair(self,label, btn1label, btn2label, layout):
+    def make_radio_pair(self, label, btn1label, btn2label, layout):
         label = QLabel(label)
         layout.addWidget(label)
 

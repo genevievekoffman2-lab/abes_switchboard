@@ -1,5 +1,8 @@
+from datetime import date
+
 from PyQt6.QtCore import QDate, QSize
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QDateEdit, QLabel, QSizePolicy
+from dateutil.relativedelta import relativedelta
 
 
 class DateRangeSelector(QWidget):
@@ -18,7 +21,9 @@ class DateRangeSelector(QWidget):
 
         self.from_date = QDateEdit()
         self.from_date.setCalendarPopup(True)
-        self.from_date.setDate(QDate(2026, 7, 1))
+        today = date.today()
+        first_of_month = today.replace(day=1)
+        self.from_date.setDate(first_of_month)
 
         self.to_date = QDateEdit()
         self.to_date.setCalendarPopup(True)

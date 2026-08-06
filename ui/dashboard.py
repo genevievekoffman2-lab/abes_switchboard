@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from db.queries import get_all_cust
 from ui.modules.comparative_report_module import ComparativeReportWindow
 from ui.modules.epr_plastic_tax import EPRWindow
+from ui.modules.profit_margin import ProfitMargin
 from ui.sales_open_orders import MFGReportWindow
 from ui.sales_report_module import SalesReportWindow
 
@@ -46,7 +47,7 @@ class Dashboard(QWidget):
         grid.addWidget(self._make_card("Sales Report", "Rankings by customer & date", "#dbeafe", self.open_sales_report), 0, 0)
         grid.addWidget(self._make_card("Open Orders", "Open orders & total sales ", "#dcfce7", self.open_open_orders), 0, 1)
         grid.addWidget(self._make_card("Comparative Report", "Sales by item for past 3 years", "dbeafe", self.open_comparative_report), 0, 2)
-        grid.addWidget(self._make_card("Profit Margins", "Profit Margin Ranked By Item", "dbeafe", self.open_epr_report), 0, 3)
+        grid.addWidget(self._make_card("Profit Margins", "Profit Margin Ranked By Item", "dbeafe", self.open_profit_margin), 0, 3)
         grid.addWidget(self._make_card("EPR", "EPR Sales for plastic tax in 7 states", "dcfce7", self.open_epr_report), 1, 0)
         grid.addWidget(self._make_card("Module 4", "Coming soon", "#fce7f3", None), 1, 1)
 
@@ -95,6 +96,10 @@ class Dashboard(QWidget):
 
     def open_epr_report(self):
         self.sales_window = EPRWindow(self.con)
+        self.sales_window.show()
+
+    def open_profit_margin(self):
+        self.sales_window = ProfitMargin(self.con)
         self.sales_window.show()
 
 # grabs list of all customers from DB; sorts them alphabetically
