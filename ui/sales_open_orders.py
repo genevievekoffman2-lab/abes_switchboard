@@ -247,6 +247,9 @@ class MFGReportWindow(QWidget):
         print(f"Load failed: {e}")
 
     def add_percent_change_column(self):
+        #in case there is an existing % change column - remove the past one
+        self.remove_percent_column()
+
         row_count = self.table_current.rowCount()
         col_count = self.table_current.columnCount()
 
@@ -271,3 +274,11 @@ class MFGReportWindow(QWidget):
         """Convert '$231,999.09 -> 231999.09'"""
         cleaned = value_str.replace('$', '').replace(',','').strip()
         return float(cleaned)
+
+    # if the % change column exists, remove it
+    def remove_percent_column(self):
+        for col in range(self.table_current.columnCount()):
+            header_item = self.table_current.horizontalHeaderItem(col)
+            if header_item is not None and header_item.text() == "% Change":
+                self.table_current.removeColumn(col)
+                return

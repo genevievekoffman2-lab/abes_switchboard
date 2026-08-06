@@ -67,16 +67,20 @@ def get_open_orders_after_date(con, from_date: date, to_date: date):
 # list returned is the total sales per ADFIELD2 (category)
 def get_total_sales(con, from_date: date, to_date: date):
     query = """
-        SELECT 
+        SELECT
             item.ADFIELD2,
-            SUM(det.EXTPRICE)
+            SUM(det.EXTPRICE) AS SUMOFEXTPRICE
         FROM INVOICE inv
-        JOIN INVDETL det ON inv.JOBNO = det.JOBNO 
-        JOIN ITEM item ON det.REFID = item.ITEMCODE 
+        INNER JOIN INVDETL det
+            ON det.SUBNO = inv.SUBNO
+            AND det.JOBNO = inv.JOBNO
+        INNER JOIN ITEM item
+            ON det.REFID = item.ITEMCODE
         WHERE CAST(inv.INVDATE AS DATE) BETWEEN ? AND ?
-        AND item.CATEGORY != 'Z-CUSTOM'
+            AND item.CATEGORY <> 'Z-CUSTOM'
         GROUP BY item.ADFIELD2
-        ORDER BY item.ADFIELD2 
+        ORDER BY item.ADFIELD2;
+         
     """
     cursor = con.cursor()
     cursor.execute(query, [from_date, to_date])
