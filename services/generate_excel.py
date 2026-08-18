@@ -1,7 +1,9 @@
-import openpyxl
-from openpyxl.styles import Font, Alignment
 import os
 import tempfile
+
+import openpyxl
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
 from models.invoice_record import InvoiceRecord
 from models.ranked_invoice_record import RankedInvoiceRecord
@@ -36,44 +38,6 @@ def gen_excel(ranked_records, headers, attribute_names, title, subtitle):
         row_index += 1
 
     return workbook
-
-# writes the title on 1st row
-# writes the subtitle on 2nd row
-# writes the headers for each column on 3rd row
-def add_titles_and_headers(sheet, title, subtitle, headers):
-    sheet.title = "Sales Report"
-    sheet.row_dimensions[1].height = 40
-
-    # add title row
-    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
-    title_cell = sheet.cell(row=1, column=1)
-    title_cell.value = f"{title}"
-    title_cell.font = Font(bold=True, size=14)
-    title_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    # add subtitle row
-    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    subtitle_cell = sheet.cell(row=2, column=1)
-    subtitle_cell.value = f"{subtitle}"
-    subtitle_cell.font = Font(size=12)
-    subtitle_cell.alignment = Alignment(horizontal='center', wrap_text=True)
-
-    # write the headers (start on row 3)
-    for col, header in enumerate(headers, start=1):
-        cell = sheet.cell(row=3, column=col)
-        cell.value = header
-        cell.font = Font(bold=True, size=12)
-        cell.alignment = Alignment(horizontal='center')
-
-    return sheet
-
-
-def open_excel(workbook):
-    # save to a temp file
-    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp:
-        tmp_path = temp.name
-    workbook.save(tmp_path)
-    os.startfile(tmp_path)
 
 
 # computes the total cases, sales and percents of each category & adds the total row
@@ -147,7 +111,6 @@ def cast_and_sort_rankedInvoices(records):
 
 def autosize_columns(workbook, headers):
     sheet = workbook.active
-    from openpyxl.utils import get_column_letter
 
     # autosize columns
     for col_index in range(1, len(headers) + 1):
@@ -178,3 +141,40 @@ def format_units(workbook, sales_col, percent_cols, start_row=3):
                 percent_cell.number_format = '0.00%'
 
     return workbook
+
+def open_excel(workbook):
+    # save to a temp file
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp:
+        tmp_path = temp.name
+    workbook.save(tmp_path)
+    os.startfile(tmp_path)
+
+# writes the title on 1st row
+# writes the subtitle on 2nd row
+# writes the headers for each column on 3rd row
+def add_titles_and_headers(sheet, title, subtitle, headers):
+    sheet.title = title
+    sheet.row_dimensions[1].height = 40
+
+    # add title row
+    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = sheet.cell(row=1, column=1)
+    title_cell.value = f"{title}"
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    # add subtitle row
+    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    subtitle_cell = sheet.cell(row=2, column=1)
+    subtitle_cell.value = f"{subtitle}"
+    subtitle_cell.font = Font(size=12)
+    subtitle_cell.alignment = Alignment(horizontal='center', wrap_text=True)
+
+    # write the headers (start on row 3)
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=3, column=col)
+        cell.value = header
+        cell.font = Font(bold=True, size=12)
+        cell.alignment = Alignment(horizontal='center')
+
+    return sheet
