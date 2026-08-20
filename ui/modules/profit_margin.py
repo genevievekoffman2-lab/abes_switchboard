@@ -2,8 +2,8 @@ import openpyxl
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox
 
 from db.queries import get_sales_and_cost
-from services.excel_logic import load_excel
-from services.generate_excel import open_excel
+from services.excel_profit_margins import load_excel
+from services.excel_sales_report import open_excel
 from ui.components.date_range_selector import DateRangeSelector
 from ui.components.radio_group import RadioGroup
 
@@ -47,7 +47,6 @@ class ProfitMargin(QWidget):
 
         #fetch data from firebird
         rows = self.fetch_data(from_date, to_date)
-        #TODO: should i group (build the dict here) or in excel logic
         self.generate_excel(rows)
 
     def fetch_data(self, from_date, to_date):

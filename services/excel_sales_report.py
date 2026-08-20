@@ -2,12 +2,12 @@ import os
 import tempfile
 
 import openpyxl
-from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
 from models.invoice_record import InvoiceRecord
 from models.ranked_invoice_record import RankedInvoiceRecord
 from services.aggregators import group_by_category
+from services.excel_utils import add_titles_and_headers, format_sheet
 from services.mappers import transform_invoiceRecord_rankedInvoiceRecord
 
 
@@ -37,6 +37,11 @@ def gen_excel(ranked_records, headers, attribute_names, title, subtitle):
 
         row_index += 1
 
+
+    currency_cols = ["E"]  # columns we want to formate as currency
+    percent_cols = ["G", "H"]
+    # add formatting
+    format_sheet(sheet, len(headers), currency_cols, percent_cols)
     return workbook
 
 
@@ -109,38 +114,7 @@ def cast_and_sort_rankedInvoices(records):
         )
     return ranked_invoices
 
-def autosize_columns(workbook, headers):
-    sheet = workbook.active
 
-    # autosize columns
-    for col_index in range(1, len(headers) + 1):
-        col_letter = get_column_letter(col_index)
-        max_len = 0
-        for row in sheet.iter_rows(min_row=3,max_col=col_index,min_col=col_index): #skips over first 3 rows when calculating width
-            for cell in row:
-                try:
-                    if cell.value:
-                        max_len = max(max_len, len(str(cell.value)))
-                except:
-                    pass
-        sheet.column_dimensions[col_letter].width = max_len + 2
-    return workbook
-
-# formats cells to have % or $ accordingly
-def format_units(workbook, sales_col, percent_cols, start_row=3):
-    sheet = workbook.active
-    max_col = max(sales_col, *percent_cols)
-
-    for row in sheet.iter_rows(min_row=start_row, max_row=sheet.max_row, min_col=1, max_col=max_col):
-        sales_cell = row[sales_col - 1]
-        if sales_cell.value is not None:
-            sales_cell.number_format = '$#,##0.00'
-        for col in percent_cols:
-            percent_cell = row[col - 1]
-            if percent_cell.value is not None:
-                percent_cell.number_format = '0.00%'
-
-    return workbook
 
 def open_excel(workbook):
     # save to a temp file
@@ -149,32 +123,3 @@ def open_excel(workbook):
     workbook.save(tmp_path)
     os.startfile(tmp_path)
 
-# writes the title on 1st row
-# writes the subtitle on 2nd row
-# writes the headers for each column on 3rd row
-def add_titles_and_headers(sheet, title, subtitle, headers):
-    sheet.title = title
-    sheet.row_dimensions[1].height = 40
-
-    # add title row
-    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
-    title_cell = sheet.cell(row=1, column=1)
-    title_cell.value = f"{title}"
-    title_cell.font = Font(bold=True, size=14)
-    title_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    # add subtitle row
-    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    subtitle_cell = sheet.cell(row=2, column=1)
-    subtitle_cell.value = f"{subtitle}"
-    subtitle_cell.font = Font(size=12)
-    subtitle_cell.alignment = Alignment(horizontal='center', wrap_text=True)
-
-    # write the headers (start on row 3)
-    for col, header in enumerate(headers, start=1):
-        cell = sheet.cell(row=3, column=col)
-        cell.value = header
-        cell.font = Font(bold=True, size=12)
-        cell.alignment = Alignment(horizontal='center')
-
-    return sheet

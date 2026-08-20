@@ -1,18 +1,15 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel,
-    QListWidget, QVBoxLayout, QAbstractItemView,
+    QListWidget, QVBoxLayout,
     QDateEdit, QHBoxLayout, QPushButton, QMessageBox,
     QRadioButton, QButtonGroup
 )
-from PyQt6.QtCore import QDate, Qt
 
 from db.queries import get_invoices
-from models.invoice_record import InvoiceRecord
 from services.aggregators import aggregate_by_customer, aggregate_by_item
-from services.generate_excel import open_excel, gen_excel, autosize_columns, format_units
+from services.excel_sales_report import open_excel, gen_excel
 from services.mappers import cast_to_invoice_records
-from ui.components import customer_selection
 from ui.components.customer_selection import CustomerSelection
 from ui.components.date_range_selector import DateRangeSelector
 
@@ -60,8 +57,6 @@ class SalesReportWindow(QWidget):
 
         self.setLayout(layout)
 
-
-
     # logic when generate report button is pressed
     def generate_report(self):
         selected_customers = self.customer_list.get_selected_customers()
@@ -96,22 +91,16 @@ class SalesReportWindow(QWidget):
             ranked_invoices = aggregate_by_item(invoices)
             excel_headers = ["Product", "Description", "Cat", "Cases", "Sales", "Rank", "%", "% Cumulative"]
             attribute_names = ["product_id", "description", "category", "cases", "sales", "rank", "percent", "cumulative" ]
-            sales_col=5
-            percent_cols=[7,8]
 
         else: # aggregate by customer sales
             ranked_invoices = aggregate_by_customer(invoices)
             excel_headers = ["Customer Name", "Cases", "Sales", "Rank", "%", "% Cumulative"]
             attribute_names = ["customer_name", "cases", "sales", "rank", "percent", "cumulative" ]
-            sales_col=3
-            percent_cols=[5, 6]
 
         excel_title = f"Sales for the period {from_date} to {to_date}"
         subtitle = f"Ranked by sales from customers: {customers_str}"
         if self.exclude_distr.isChecked(): subtitle += " | Excluding distributors "
         workbook = gen_excel(ranked_invoices, excel_headers, attribute_names, excel_title, subtitle)
-        workbook = autosize_columns(workbook, excel_headers)
-        workbook = format_units(workbook, sales_col, percent_cols)
 
         open_excel(workbook)
 

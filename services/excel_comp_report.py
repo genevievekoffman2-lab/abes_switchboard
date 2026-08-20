@@ -25,6 +25,7 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 
+from services.excel_utils import format_sheet
 
 category_names = {
     '1' : 'Cheesecake',
@@ -37,7 +38,7 @@ def load_excel(sheet, headers, title, subtitle, data):
     add_titles_and_headers(sheet, title, subtitle, headers)
     rows = flatten_data(data)
     loadRows(sheet, rows)
-    format_sheet(sheet)
+    format_sheet(sheet, len(headers),["G", "H", "I"],["K", "L", "M", "O", "P", "Q"])
 
 def loadRows(sheet, rows):
     row_num = 5
@@ -171,34 +172,6 @@ def add_total_rows(sheet, row, row_index):
         cell.font = Font(bold=True)
         if col_index in top_border_indices:
             cell.border = Border(top=Side(style='medium'))  # top border
-        if col_index in [7,8,9]: #sales columns
-            cell.number_format = "$#,##0"
-        if col_index in [11,12,13, 15,16,17]: # % of sales columns
-            cell.number_format = "0.0%"
-
-def format_sheet(sheet):
-    col_widths = {
-        1: 15,  # item NO
-        2: 40,  # description
-        3: 10,  # qty2024
-        4: 10,
-        5: 10,
-        7: 12,  # sales2024
-        8: 12,
-        9: 12,
-        10: 2,
-        11: 12, # %sales2024
-        12: 12,
-        13: 12,
-        14: 2,
-        15: 12,
-        16: 12
-        #TODO: shorten this list / make default 12?
-    }
-
-    for col, width in col_widths.items():
-        sheet.column_dimensions[get_column_letter(col)].width = width
-
 
 def add_titles_and_headers(sheet, title, subtitle, headers):
     # title row

@@ -5,7 +5,7 @@ import pprint
 
 from db.queries import get_sales_by_item_cr
 from services.excel_comp_report import load_excel
-from services.generate_excel import open_excel
+from services.excel_sales_report import open_excel
 from ui.components.customer_selection import CustomerSelection
 from ui.components.date_range_selector import DateRangeSelector
 from ui.components.loading_spinner import LoadingSpinner

@@ -4,7 +4,7 @@ import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QApplication, QPushButton
 from openpyxl.reader.excel import load_workbook
 
-from services.generate_excel import open_excel
+from services.excel_sales_report import open_excel
 
 
 class EPRWindow(QWidget):
