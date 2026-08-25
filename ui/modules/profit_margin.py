@@ -13,7 +13,12 @@ class ProfitMargin(QWidget):
         super().__init__()
         self.con = con
         self.setWindowTitle("Profit Margin")
+        self._load_styles()
         self._build_ui()
+
+    def _load_styles(self):
+        with open("ui/styles/sales_report.qss", "r") as f:
+            self.setStyleSheet(f.read())
 
     def _build_ui(self):
         layout = QVBoxLayout()
@@ -45,20 +50,24 @@ class ProfitMargin(QWidget):
             QMessageBox.warning(self, "Warning", "From date must be before To date.")
             return
 
-        #fetch data from firebird
+        #fetch dataa from firebird
         rows = self.fetch_data(from_date, to_date)
-        self.generate_excel(rows)
+        # for r in rows:
+        #     if "ABE204" in r:
+        #         print(r)
+        self.generate_excel(from_date, to_date, rows)
 
     def fetch_data(self, from_date, to_date):
         rows = get_sales_and_cost(self.con, from_date, to_date)
         return rows
 
-    def generate_excel(self, rows):
+    def generate_excel(self, from_date, to_date, rows):
         workbook = openpyxl.Workbook()
         sheet = workbook.active
-        title = "Profit Margin"
-        subtitle = "From date to date"
-        headers = ["type", "cat","Item ID", "Description", "total sales", "total cost", "Gross Contribution", "PM%"]
+        title = "Profit Margin Ranked By Item"
+        subtitle = f"From {from_date} to {to_date}"
+        headers = ["size", "cat", "Item ID", "Description", "Total Sales", "Total Cost", "Gross Contribution", "PM%",
+                   "", "% of C Sales", "% of C Mar", "", "% of T Sales", "% of T Mar"]
 
         load_excel(sheet, headers, title, subtitle, rows)
         open_excel(workbook)

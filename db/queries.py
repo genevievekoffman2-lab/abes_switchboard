@@ -192,18 +192,19 @@ def get_sales_and_cost(con, from_date: date, to_date: date):
     query = f"""
             SELECT 
                item.ADFIELD2,
-				item.ADFIELD1,
+				item.ADFIELD3,
                 det.REFID,
                 det.DESCRIPT,
                 SUM(det.EXTPRICE ) AS total_sales,
-                SUM(det.QTY * item.COST) AS total_cost
+                SUM(det.EXTCOST) AS total_cost
             FROM INVOICE inv
             JOIN INVDETL det ON inv.JOBNO = det.JOBNO 
+            AND inv.SUBNO = det.SUBNO
             JOIN ITEM item ON det.REFID = item.ITEMCODE 
             WHERE inv.JOBNO LIKE 'SO%'
             AND CAST(inv.INVDATE AS DATE) BETWEEN ? AND ?
-            GROUP BY item.ADFIELD1, item.ADFIELD2, det.REFID, det.DESCRIPT
-			ORDER BY item.ADFIELD1, item.ADFIELD2, det.REFID
+            GROUP BY item.ADFIELD2, item.ADFIELD3, det.REFID, det.DESCRIPT
+			ORDER BY item.ADFIELD2, item.ADFIELD3, det.REFID
     """
     cursor = con.cursor()
     cursor.execute(query, [from_date, to_date])
