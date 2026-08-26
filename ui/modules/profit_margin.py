@@ -50,15 +50,19 @@ class ProfitMargin(QWidget):
             QMessageBox.warning(self, "Warning", "From date must be before To date.")
             return
 
-        #fetch dataa from firebird
-        rows = self.fetch_data(from_date, to_date)
-        # for r in rows:
-        #     if "ABE204" in r:
-        #         print(r)
+        #check which radio btn is selected
+        selected = self.radio_trio.get_selected()
+        # fetch data from firebird
+        rows = self.fetch_data(from_date, to_date, selected)
         self.generate_excel(from_date, to_date, rows)
 
-    def fetch_data(self, from_date, to_date):
-        rows = get_sales_and_cost(self.con, from_date, to_date)
+    def fetch_data(self, from_date, to_date, category):
+        if category == "All":
+            rows = get_sales_and_cost(self.con, from_date, to_date)
+        elif category == "Distr Only":
+            rows = get_sales_and_cost(self.con, from_date, to_date, "Distributed")
+        elif category == "Mfg Only":
+            rows = get_sales_and_cost(self.con, from_date, to_date, "Mfg")
         return rows
 
     def generate_excel(self, from_date, to_date, rows):

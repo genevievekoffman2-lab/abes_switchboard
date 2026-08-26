@@ -188,7 +188,13 @@ def get_sales_by_item_cr(con, customer_names: list, from_date: date, to_date: da
     return rows
 
 # gets sales (with cost attribute) for PM module
-def get_sales_and_cost(con, from_date: date, to_date: date):
+# category filter (none- all; Mfg - manufacturing; Dist - distributors)
+def get_sales_and_cost(con, from_date: date, to_date: date, category_filter=None):
+    where_clause = ""
+    if category_filter == 'Distributed':
+        where_clause = "AND item.CATEGORY = 'PURCHASED FOR DIST.'"
+    elif category_filter == 'Mfg':
+        where_clause = "AND item.CATEGORY IN ('BAKEV', 'BAKEC')"
     query = f"""
             SELECT 
                item.ADFIELD2,
@@ -202,6 +208,7 @@ def get_sales_and_cost(con, from_date: date, to_date: date):
             AND inv.SUBNO = det.SUBNO
             JOIN ITEM item ON det.REFID = item.ITEMCODE 
             WHERE inv.JOBNO LIKE 'SO%'
+            {where_clause}
             AND CAST(inv.INVDATE AS DATE) BETWEEN ? AND ?
             GROUP BY item.ADFIELD2, item.ADFIELD3, det.REFID, det.DESCRIPT
 			ORDER BY item.ADFIELD2, item.ADFIELD3, det.REFID
