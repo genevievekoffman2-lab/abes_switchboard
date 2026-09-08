@@ -259,7 +259,7 @@ class MFGReportWindow(QWidget):
         for row in range(row_count):
             # ( curr year sales - prev year sales ) / prev year sales x 100
             prev_yr_sale = self.parse_currency(self.table_last_year.item(row,1).text())
-            curr_yr_sale = self.parse_currency(self.table_current.item(row, 1).text())
+            curr_yr_sale = self.parse_currency(self.table_current.item(row, 3).text())
             pct_change = (curr_yr_sale - prev_yr_sale) / prev_yr_sale * 100
             change = QTableWidgetItem(f"{pct_change:.0f}%")
 

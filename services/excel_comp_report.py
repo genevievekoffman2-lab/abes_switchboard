@@ -38,7 +38,19 @@ def load_excel(sheet, headers, title, subtitle, data):
     add_titles_and_headers(sheet, title, subtitle, headers)
     rows = flatten_data(data)
     loadRows(sheet, rows)
-    format_sheet(sheet, len(headers),["G", "H", "I"],["K", "L", "M", "O", "P", "Q"])
+    manual_col_widths = {
+        'B' : 33,
+        'G' : 16,
+        'H' : 16,
+        'I' : 16,
+        'K' : 14,
+        'L' : 14,
+        'M' : 14,
+        'O' : 14,
+        'P' : 14,
+        'Q' : 14
+    }
+    format_sheet(sheet, len(headers),["G", "H", "I"],["K", "L", "M", "O", "P", "Q"], manual_col_widths)
 
 def loadRows(sheet, rows):
     row_num = 5

@@ -6,13 +6,15 @@ from openpyxl.utils import get_column_letter
 # formats the Excel sheet: adding width of columns and percent/number formatting
 # should be performed last, after cells are filled with data
 # currency & percent cols: list of column letters needing the formatting
-# col_widths: dictionary with key = col letter & value = length
-def format_sheet(sheet, col_count, currency_cols, percent_cols):
-
-    # for col, width in col_widths.items():
-    #     sheet.column_dimensions[col].width = width
-
+# col_widths: optional; dictionary with key = col letter & value = length in the
+    #   case that we want a set width instead of autosize
+def format_sheet(sheet, col_count, currency_cols, percent_cols, col_widths=None):
     autosize_columns(sheet, col_count)
+
+    #if col_widths is not None, set col widths manually
+    if col_widths:
+        for col, width in col_widths.items():
+            sheet.column_dimensions[col].width = width
 
     for col in currency_cols:
         for row in range(4, sheet.max_row + 1):
@@ -23,6 +25,9 @@ def format_sheet(sheet, col_count, currency_cols, percent_cols):
         for row in range(4, sheet.max_row + 1):
             cell = sheet[f"{col}{row}"]
             cell.number_format = '0.0%'
+
+    # freeze panes on line 4
+    sheet.freeze_panes = "A5"
 
 
 def autosize_columns(sheet, columns):

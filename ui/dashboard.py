@@ -44,12 +44,13 @@ class Dashboard(QWidget):
         grid = QGridLayout()
         grid.setSpacing(16)
 
-        grid.addWidget(self._make_card("Sales Report", "Rankings by customer & date", "#dbeafe", self.open_sales_report), 0, 0)
+        grid.addWidget(self._make_card("Sales by Ranking", "Rankings by customer & date", "#dbeafe", self.open_sales_report), 0, 0)
         grid.addWidget(self._make_card("Open Orders", "Open orders & total sales ", "#dcfce7", self.open_open_orders), 0, 1)
         grid.addWidget(self._make_card("Comparative Report", "Sales by item for past 3 years", "dbeafe", self.open_comparative_report), 0, 2)
         grid.addWidget(self._make_card("Profit Margin", "Profit Margin Ranked By Item", "dbeafe", self.open_profit_margin), 0, 3)
         grid.addWidget(self._make_card("EPR", "EPR Sales for plastic tax in 7 states", "dcfce7", self.open_epr_report), 1, 0)
-        grid.addWidget(self._make_card("Module 4", "Coming soon", "#fce7f3", None), 1, 1)
+        grid.addWidget(self._make_card("Purchases by Item Ranking", "Coming soon", "#fce7f3", None), 1, 1)
+        grid.addWidget(self._make_card("Module 5", "Coming Soon", "#dbeafe", None), 1, 2)
 
         layout.addLayout(grid)
         layout.addStretch()
