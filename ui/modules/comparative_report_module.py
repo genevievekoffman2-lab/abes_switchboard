@@ -94,6 +94,7 @@ class ComparativeReportWindow(QWidget):
         fetched_data_24 = get_sales_by_item_cr(self.con, selected_customers, (from_date - relativedelta(years=2)),
                                                (to_date - relativedelta(years=2)))
         ds = self.organize_by_category(fetched_data_24, fetched_data_25, fetched_data_26)
+
         return ds
 
     def load_excel(self, data, title, subtitle, headers):
@@ -105,12 +106,12 @@ class ComparativeReportWindow(QWidget):
         open_excel(workbook)
 
     # builds a nested dictionary from the fetched data
-    # a dictionary of key = category (adfield3) & value = another dic
-    # sub dict is key = size (adfield3) & value =
+    # a dictionary of key = category (adfield2) & value = another dic
+    # sub dict is key = size (adfield3)
     # (item no, descript, qty24, '25, '26, sales24, '25, 26, % of total sales, % oc core sales, % incr in sales)
     def organize_by_category(self, data24, data25, data26):
         temp = {}
-        # category : { size : { refid: [descript, [0,0,0], [0,0,0] } }
+        # category(adfield2) : { size(adfield3) : { refid: [descript, [0,0,0], [0,0,0] } }
         def add_rows(rows, year_index):
             for refid, descr, cat, size, qty, sales in rows:
                 if cat not in temp:
@@ -128,7 +129,16 @@ class ComparativeReportWindow(QWidget):
         add_rows(data25, 1)
         add_rows(data26, 2)
 
-        return temp
+        # sort categories ascending numerically and sizes within each cat
+        sorted_temp = {
+            cat: {
+                size: temp[cat][size]
+                for size in sorted(temp[cat], key=int)
+            }
+            for cat in sorted(temp, key=int)
+        }
+
+        return sorted_temp
 
     def on_error(self, e):
         self.spinner.stop()

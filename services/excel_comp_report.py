@@ -18,12 +18,7 @@
         total other
         grand total
 '''
-import pprint
-from asyncio.windows_events import NULL
-
-import openpyxl
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, Alignment, Border, Side
 
 from services.excel_utils import format_sheet
 
@@ -65,7 +60,7 @@ def loadRows(sheet, rows):
             add_total_rows(sheet, r, row_num)
             row_num += 1
             pass
-        elif row["type"] == "total cat" or row["type"] == "total core" or row["type"] == "grand total":
+        elif row["type"] == "total cat" or row["type"] == "total core" or row["type"] == "grand total" or row["type"] == "total clamshell":
             total_row = ["", f"{row["label"]}", row["total qty"], "", row["total sales"], "", row.get("sales_ratios", []), "", row.get("core_ratios", [])]
             flatten(total_row, r)
             add_total_rows(sheet, r, row_num)
@@ -102,6 +97,9 @@ def flatten_data(data):
         # tracks category totals
         cat_total_qty, cat_total_sales = [0, 0, 0], [0, 0, 0]
 
+        # case: sum for 12pk clamshells & boxes
+        clamshell_qty, clamshell_sales = [0,0,0], [0,0,0]
+
         # cont as long as there's rec in the category
         for size, items in sizes.items():
             # tracks size totals (sub category)
@@ -128,6 +126,19 @@ def flatten_data(data):
                 "total qty": sz_total_qty,
                 "total sales": sz_total_sales
             })
+
+            # case: 12pk clamshells & boxes total
+            if cat == '2' and size in ('1', '2'):
+                clamshell_qty = [a + b for a, b in zip(clamshell_qty, sz_total_qty)]
+                clamshell_sales = [a + b for a, b in zip(clamshell_sales, sz_total_sales)]
+                if size == '2': # add the new total row
+                    rows.append({
+                        "type": "total clamshell",
+                        "label": "Total Clamshells",
+                        "total qty": clamshell_qty,
+                        "total sales": clamshell_sales
+                    })
+
             cat_total_qty = [a+b for a,b in zip(cat_total_qty, sz_total_qty)]
             cat_total_sales = [a+b for a,b in zip(cat_total_sales, sz_total_sales)]
 
