@@ -35,15 +35,18 @@ def load_excel(sheet, headers, title, subtitle, data):
     loadRows(sheet, rows)
     manual_col_widths = {
         'B' : 33,
+        'C' : 10,
+        'D' : 10,
+        'E' : 10,
         'G' : 16,
         'H' : 16,
         'I' : 16,
-        'K' : 14,
-        'L' : 14,
-        'M' : 14,
-        'O' : 14,
-        'P' : 14,
-        'Q' : 14
+        'K' : 10,
+        'L' : 10,
+        'M' : 10,
+        'O' : 10,
+        'P' : 10,
+        'Q' : 10
     }
     format_sheet(sheet, len(headers),["G", "H", "I"],["K", "L", "M", "O", "P", "Q"], manual_col_widths)
 
@@ -134,7 +137,7 @@ def flatten_data(data):
                 if size == '2': # add the new total row
                     rows.append({
                         "type": "total clamshell",
-                        "label": "Total Clamshells",
+                        "label": "Total 12 Packs",
                         "total qty": clamshell_qty,
                         "total sales": clamshell_sales
                     })

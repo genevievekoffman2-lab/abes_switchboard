@@ -85,6 +85,7 @@ class ComparativeReportWindow(QWidget):
                          "Sales 2026", "", "2024", "2025", "2026", "", "2024", "2025", "2026"]
 
         self.load_excel(ds, excel_title, subtitle, excel_headers)
+        self.close() # closes comp report window
 
     def fetch_data(self, from_date, to_date, selected_customers):
         # fetch data from Firebird

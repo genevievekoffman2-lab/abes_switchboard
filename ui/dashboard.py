@@ -13,6 +13,7 @@ from ui.modules.epr_plastic_tax import EPRWindow
 from ui.modules.profit_margin import ProfitMargin
 from ui.sales_open_orders import MFGReportWindow
 from ui.sales_report_module import SalesReportWindow
+from ui.modules.purchases_by_ranking import PurchasesByRanking
 
 
 class Dashboard(QWidget):
@@ -49,7 +50,7 @@ class Dashboard(QWidget):
         grid.addWidget(self._make_card("Comparative Report", "Sales by item for past 3 years", "dbeafe", self.open_comparative_report), 0, 2)
         grid.addWidget(self._make_card("Profit Margin", "Profit Margin Ranked By Item", "dbeafe", self.open_profit_margin), 0, 3)
         grid.addWidget(self._make_card("EPR", "EPR Sales for plastic tax in 7 states", "dcfce7", self.open_epr_report), 1, 0)
-        grid.addWidget(self._make_card("Purchases by Item Ranking", "Coming soon", "#fce7f3", None), 1, 1)
+        grid.addWidget(self._make_card("Purchases by Item Ranking", "Coming soon", "#fce7f3", self.open_purchases_by_ranking), 1, 1)
         grid.addWidget(self._make_card("Module 5", "Coming Soon", "#dbeafe", None), 1, 2)
 
         layout.addLayout(grid)
@@ -101,6 +102,10 @@ class Dashboard(QWidget):
 
     def open_profit_margin(self):
         self.sales_window = ProfitMargin(self.con)
+        self.sales_window.show()
+
+    def open_purchases_by_ranking(self):
+        self.sales_window = PurchasesByRanking(self.con)
         self.sales_window.show()
 
 # grabs list of all customers from DB; sorts them alphabetically
